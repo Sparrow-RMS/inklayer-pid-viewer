@@ -1,0 +1,7 @@
+{
+  "dependencies": ["."],
+  "graphs": {
+    "hazop_agent": "./src/hazop_agent/graph/builder.py:graph"
+  },
+  "env": ".env"
+}

@@ -1,0 +1,38 @@
+[project]
+name = "hazop-agent"
+version = "0.1.0"
+description = "P&ID -> HAZOP nodes pipeline as a LangGraph agent (Python port of server/src/pipeline)"
+readme = "README.md"
+authors = [
+    { name = "souravsubudhi", email = "sourav.k@sparrowrms.in" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.141.1",
+    "langgraph>=1.2.12",
+    "openai>=3.19.2",
+    "pymupdf>=1.28.2",
+    "python-dotenv>=1.2.3",
+    "uvicorn>=0.54.0",
+]
+
+[project.scripts]
+hazop-agent = "hazop_agent.cli:main"
+
+[build-system]
+requires = ["uv_build>=0.10.6,<0.11.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "langgraph-cli[inmem]>=0.4.32",
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+# PyMuPDF's SWIG bindings emit these on import; nothing actionable.
+filterwarnings = ["ignore:builtin type .* has no __module__ attribute:DeprecationWarning"]
