@@ -4,12 +4,13 @@
     uv run hazop-agent run <jobId> --max-nodes 9       # add consolidation to an existing job
     uv run hazop-agent run <jobId> --replay            # re-apply deterministic rules, no model calls
     uv run hazop-agent run <jobId> --force-from step2  # redo step 2 onward
+    uv run hazop-agent worksheet <jobId> p0-node-1     # step 4: draft a node's HAZOP worksheet (--save adds it)
+    uv run hazop-agent samples                         # build the reference library from docs/hazop_samples/
     uv run hazop-agent graph                           # print the graph as Mermaid
     uv run hazop-agent serve                           # HTTP endpoint for the viewer (port 4002)
     uv run hazop-agent list                            # jobs on disk
 
-Artifacts are shared with the JS pipeline in server/.jobs/<jobId>/, so its
-`npm run pipeline inspect|processes|nodes` printers work on this agent's output.
+Artifacts live in data/jobs/<jobId>/ at the repo root (PIPELINE_JOBS_DIR moves it).
 """
 import argparse
 import asyncio
@@ -27,9 +28,7 @@ _AGENT_ROOT = Path(__file__).resolve().parents[2]
 
 
 def _load_env():
-    # agent/.env first; fall back to the JS server's .env so one key serves both.
     load_dotenv(_AGENT_ROOT / '.env')
-    load_dotenv(_AGENT_ROOT.parent / 'server' / '.env')
 
 
 def _step_options(args):
@@ -91,8 +90,12 @@ async def _run(args):
     if args.force_from:
         payload['force_from'] = args.force_from
 
+    # The drawing's thread (its job id), shared with the viewer's chat.
+    thread_id = jobs.job_id_for(target.name, target.read_bytes()) if 'pdf_path' in payload else args.target
+    config = {'configurable': {'thread_id': thread_id}, 'metadata': {'thread_id': thread_id}, 'run_name': 'hazop-pipeline'}
+
     final = {}
-    async for mode, chunk in graph.astream(payload, stream_mode=['custom', 'updates', 'values']):
+    async for mode, chunk in graph.astream(payload, config=config, stream_mode=['custom', 'updates', 'values']):
         if mode == 'custom':
             line = describe_progress(chunk)
             if line:
@@ -116,12 +119,37 @@ async def _run(args):
     return 0
 
 
+async def _worksheet(args):
+    if args.save:
+        from .worksheets import GenerateIn, generate_node_worksheet
+        out = await generate_node_worksheet(args.job, args.node, GenerateIn(replace=args.replace))
+        deviations, warnings = out['deviations'], out['warnings']
+        print(f"added {out['added']} deviations, skipped {out['skipped']} already in the worksheet")
+    else:
+        from .pipeline.step4.generate import generate
+        out = await generate(args.job, args.node)
+        deviations, warnings = out['rows'], out['warnings']
+    for i, d in enumerate(deviations, 1):
+        print(f"{i}. {d['parameter']} | {d['guideword']} | {d['deviation']}")
+        for j, c in enumerate(d['causes'], 1):
+            print(f"   {i}.{j} {c['text']}")
+            for k, q in enumerate(c['consequences'], 1):
+                print(f"      {i}.{j}.{k} {q['text']}")
+                for s in q['safeguards']:
+                    print(f"         safeguard: {s['text']}")
+                for r in q['recommendations']:
+                    print(f"         recommendation: {r['text']}")
+    for w in warnings:
+        print(f"! {w}")
+    return 0
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(prog='hazop-agent', description='P&ID -> HAZOP nodes, as a LangGraph agent.')
     sub = parser.add_subparsers(dest='command', required=True)
 
     run = sub.add_parser('run', help='run the pipeline graph on a PDF or an existing job id')
-    run.add_argument('target', help='path to a PDF, or a job id under server/.jobs')
+    run.add_argument('target', help='path to a PDF, or a job id under data/jobs')
     run.add_argument('--max-nodes', type=int, help='consolidate each page to at most this many nodes')
     run.add_argument('--min-relatedness', type=float, help='below this, a consolidation merge is flagged forced (default 0.3)')
     run.add_argument('--force-from', choices=STEPS, help='recompute this step and every step after it')
@@ -137,6 +165,15 @@ def main(argv=None):
     run.add_argument('--no-vectors', action='store_true')
     run.add_argument('--max-pairs-per-call', type=int, default=40)
     run.add_argument('--no-repair', action='store_true', help='step 3: skip the repair pass when validation finds errors')
+
+    ws = sub.add_parser('worksheet', help="step 4: draft one node's HAZOP worksheet")
+    ws.add_argument('job', help='job id under data/jobs')
+    ws.add_argument('node', help='node id, e.g. p0-node-1')
+    ws.add_argument('--save', action='store_true', help="add the draft to the node's worksheet (skips deviations already there)")
+    ws.add_argument('--replace', action='store_true', help="with --save: delete the node's existing deviations first")
+
+    samples = sub.add_parser('samples', help='build the reference library of accepted HAZOP worksheets from docs/hazop_samples/')
+    samples.add_argument('--force', action='store_true', help='read every report again, not only new or changed ones')
 
     sub.add_parser('graph', help='print the graph as Mermaid')
     sub.add_parser('list', help='list jobs on disk')
@@ -156,6 +193,16 @@ def main(argv=None):
         from .server import app
         uvicorn.run(app, host=args.host, port=args.port)
         return 0
+    if args.command == 'samples':
+        from .pipeline.samples import LIBRARY, SAMPLES_DIR, build_library
+        library = asyncio.run(build_library(args.force))
+        rows = sum(len(f['rows']) for f in library['files'].values())
+        print(f"{len(library['files'])} report(s), {rows} deviation rows -> {LIBRARY}")
+        if not library['files']:
+            print(f'Put past HAZOP reports (PDF, Excel, Word) in {SAMPLES_DIR} and run this again.')
+        return 0
+    if args.command == 'worksheet':
+        return asyncio.run(_worksheet(args))
     if args.command == 'list':
         for job in jobs.list_jobs():
             print(f"{job['jobId']:<48} {','.join(job['artifacts']) or '—'}")

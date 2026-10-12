@@ -8,9 +8,11 @@ has already been done for the model.
 import json
 from pathlib import Path
 
+from ..nomenclature import describe, prompt_section
+
 NODE_RULES = (Path(__file__).parent / 'node_rules.md').read_text(encoding='utf-8')
 
-NODE_BUILD_SYSTEM_PROMPT = NODE_RULES + """
+NODE_BUILD_SYSTEM_PROMPT = NODE_RULES + prompt_section() + """
 
 ---
 
@@ -33,6 +35,16 @@ P&ID sheet:
   repeat these; add to "consistencyFindings" only what they miss, especially
   copy-paste errors between duplicate trains, and new scope with no
   protection.
+
+## Parameters and deviations
+
+List in "parameters" every parameter Step 6a requires for the node's
+equipment, each with its own high-side and low-side safeguards; never only
+one "critical" parameter. "keyDeviations" covers each of those parameters
+with each guideword Step 6a requires, and every deviation carries the
+safeguard tags (or C&E rows) that answer it. Code checks this coverage (V6)
+and the design-pressure comparison (V7) using the ratings listed under
+computed facts.
 
 ## Building a node
 
@@ -61,8 +73,11 @@ it is marked on the drawing; set "typicalOf" to the full node's localId and
 list only the differences. Shared headers and cross-overs are never typical
 (D3).
 
-"operatingModes" lists only modes named in the C&E table. A node that spans
-two of them, or carries more than ~8-10 interlocks, must be split (Step 5).
+"operatingModes" lists the modes named in the C&E table, plus any new mode
+that red scope adds to an existing node (R6), named "<mode> (new, R6)", e.g.
+"Tanker unloading (new, R6)". A node that spans two of the C&E table's modes,
+or carries more than ~8-10 interlocks, must be split (Step 5); a new R6 mode
+added to an existing node is not a reason to split it.
 Duplicate trains are the usual way to keep nodes a reviewable size: study
 one train in full and declare the other typical.
 
@@ -98,7 +113,7 @@ def format_inventory(entities, revised_ids):
     lines = []
     for e in entities:
         b = e['bbox']
-        tag = f' "{e["tag"]}"' if e.get('tag') else ''
+        tag = f' "{e["tag"]}"{describe(e)}' if e.get('tag') else ''
         attrs = _attrs(e, 4)
         conn = f" connectsTo=[{','.join(e['connectsTo'])}]" if e.get('connectsTo') else ''
         revised = ' [REVISED]' if e['id'] in revised_ids else ''
@@ -131,7 +146,7 @@ def format_interlocks(table):
     return '\n'.join(lines)
 
 
-def format_facts(loops, reliefs, connectors_, trains, entity_by_id):
+def format_facts(loops, reliefs, connectors_, trains, entity_by_id, ratings=None):
     def tag(i):
         e = entity_by_id.get(i) or {}
         return e.get('tag') or i
@@ -144,6 +159,8 @@ def format_facts(loops, reliefs, connectors_, trains, entity_by_id):
     parts += [f"  {c['id']} \"{c.get('tag') or ''}\" — {c['description']}" for c in connectors_] or ['  none found']
     parts.append('Duplicate-train candidates (D1-D4):')
     parts += [f"  {', '.join(t['tags'])}: {t['why']}" for t in trains] or ['  none found']
+    parts.append('Design pressure ratings, converted to bar g (V7: compare with pump / relief pressure in the same node):')
+    parts += [f"  {r['tag']}: {r['printed']} = {r['bar']:.2f} bar g" for r in (ratings or {}).values()] or ['  none found']
     return '\n'.join(parts)
 
 

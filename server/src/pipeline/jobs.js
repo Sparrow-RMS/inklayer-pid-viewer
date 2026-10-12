@@ -17,7 +17,7 @@ import { existsSync } from 'node:fs'
 import { basename, extname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-export const JOBS_ROOT = process.env.PIPELINE_JOBS_DIR || fileURLToPath(new URL('../../.jobs/', import.meta.url))
+export const JOBS_ROOT = process.env.PIPELINE_JOBS_DIR || fileURLToPath(new URL('../../../data/jobs/', import.meta.url))
 
 const slug = (name) =>
   basename(name, extname(name))

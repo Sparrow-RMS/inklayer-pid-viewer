@@ -67,3 +67,11 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* Opening the worksheet is the main action; merging follows below a rule. */
+.node-merge-menu-worksheet {
+  font-weight: 600;
+  border-bottom: 1px solid var(--menu-border);
+  border-radius: 6px 6px 0 0;
+  margin-bottom: 4px;
+}

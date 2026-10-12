@@ -1,6 +1,6 @@
 """The Python port against the JS pipeline it replaces.
 
-Replays every cached raw model response under server/.jobs through BOTH
+Replays every cached raw model response under data/jobs through BOTH
 implementations' deterministic "assemble" halves (the JS side via
 js_reference.mjs) and requires identical artifacts, ignoring only
 `generatedAt`/`durationMs`. No model calls. Skipped when node or the JS

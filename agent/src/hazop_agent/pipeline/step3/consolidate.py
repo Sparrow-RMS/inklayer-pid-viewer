@@ -24,6 +24,7 @@ from ..jobs import now_iso
 from ..llm import map_limit, structured_call, text_part
 from .cluster import chunked, dedupe_routes
 from .prompts import build_consolidate_system_prompt, format_node_pairs
+from .rules import normalize_hazop_fields
 from .schema import RELATEDNESS_SCHEMA
 
 DEFAULT_MAX_PAIRS_PER_CALL = 40
@@ -230,10 +231,23 @@ def _union_by(lists, key):
     return list(out.values())
 
 
+def _merge_parameters(lists):
+    """One entry per parameter name, its safeguards unioned across the merged nodes."""
+    out = {}
+    for p in (p for ps in lists for p in ps):
+        key = (p['parameter'], p['name'].lower())
+        if key in out:
+            out[key] = {**out[key], 'highSafeguards': _union([out[key]['highSafeguards'], p['highSafeguards']]),
+                        'lowSafeguards': _union([out[key]['lowSafeguards'], p['lowSafeguards']])}
+        else:
+            out[key] = p
+    return list(out.values())
+
+
 def merge_hazop(members):
     """The Step 6 fields of a reduced-option node: everything its sub-nodes
     covered, plus which nodes were merged (the rules ask to state it)."""
-    hs = [n['hazop'] for n in members if n.get('hazop')]
+    hs = [normalize_hazop_fields(n['hazop']) for n in members if n.get('hazop')]
     if len(hs) == 1:
         return hs[0]
     typical = {h['typicalOf'] for h in hs}
@@ -250,13 +264,9 @@ def merge_hazop(members):
         'controlLoops': _union([h['controlLoops'] for h in hs]),
         'interlockRefs': _union([h['interlockRefs'] for h in hs]),
         'reliefDevices': _union_by([h['reliefDevices'] for h in hs], lambda r: r['tag']),
-        'protection': {
-            'criticalParameter': ' / '.join(dict.fromkeys(h['protection']['criticalParameter'] for h in hs)),
-            'highSafeguards': _union([h['protection']['highSafeguards'] for h in hs]),
-            'lowSafeguards': _union([h['protection']['lowSafeguards'] for h in hs]),
-            'vacuumProtection': next((h['protection']['vacuumProtection'] for h in hs if h['protection']['vacuumProtection']), None),
-        },
-        'keyDeviations': _union_by([h['keyDeviations'] for h in hs], lambda d: (d['guideword'].upper(), d['parameter'].lower())),
+        'parameters': _merge_parameters([h['parameters'] for h in hs]),
+        'vacuumProtection': next((h['vacuumProtection'] for h in hs if h['vacuumProtection']), None),
+        'keyDeviations': _union_by([h['keyDeviations'] for h in hs], lambda d: (d['guideword'].upper(), d['parameter'], d['detail'].lower())),
         'operatingModes': _union([h['operatingModes'] for h in hs]),
         'utilitiesAsSafeguards': _union([h['utilitiesAsSafeguards'] for h in hs]),
         'typicalOf': typical.pop() if len(typical) == 1 else None,

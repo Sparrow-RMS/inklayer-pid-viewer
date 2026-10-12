@@ -172,7 +172,13 @@ export function assemblePage(collected) {
   // merge rule 1 treats a shared anchor as proof two sightings are the same
   // entity — and a stolen anchor would then fuse two different ones.
   const strippedAnchors = enforceAnchorExclusivity(sightings, textById)
-  const entities = mergeSightings(sightings, pageIndex, textById)
+  // Tile-local ids ("v3") only mean something inside their own tile, and
+  // every tile reuses them, so they are pinned to the sighting they name
+  // BEFORE merging pools connectsTo across tiles.
+  qualifyLocalRefs(sightings, tileResults)
+  const owner = new Map()
+  const entities = mergeSightings(sightings, pageIndex, textById, owner)
+  localizeConnections(entities, owner)
 
   // Split bubble tags ("FT" over "202") are reassembled first, so the two
   // passes that follow can recognise them as the single tags they are.
@@ -323,8 +329,10 @@ export function normalizeSighting(raw, tile, textById, index) {
  *   3. same category, both untagged, boxes substantially overlapping.
  * Lines are exempt from the distance check on rule 2: one line number names
  * one line, however far its run stretches across the sheet.
+ *
+ * `owner`, when given, is filled with sighting uid -> merged entity id.
  */
-export function mergeSightings(sightings, pageIndex, textById) {
+export function mergeSightings(sightings, pageIndex, textById, owner = null) {
   const dsu = new DisjointSet()
   for (const s of sightings) dsu.add(s.uid)
 
@@ -407,7 +415,9 @@ export function mergeSightings(sightings, pageIndex, textById) {
       const abbrev = CATEGORY_ABBREV[category] ?? 'x'
       const n = (counters.get(abbrev) ?? 0) + 1
       counters.set(abbrev, n)
-      return combineGroup(group, `p${pageIndex}-${abbrev}-${n}`, pageIndex, textById)
+      const id = `p${pageIndex}-${abbrev}-${n}`
+      if (owner) for (const s of group) owner.set(s.uid, id)
+      return combineGroup(group, id, pageIndex, textById)
     })
     .sort((a, b) => a.bbox.y - b.bbox.y || a.bbox.x - b.bbox.x)
 }
@@ -727,10 +737,45 @@ function mergeAttributes(ranked) {
   return [...out.entries()].map(([key, value]) => ({ key, value }))
 }
 
-/** Turns the model's free-text `connectsTo` (tags, or tile-local ids) into
- *  real entity ids where they can be matched. Unresolvable references are
- *  left in `connectsTo` for step 2 to reason about rather than discarded. */
+/** Rewrites each sighting's tile-local `connectsTo` ids to the uid of the
+ *  sighting they name in that same tile. A local id whose sighting was
+ *  dropped is removed: outside its tile it names nothing. Tags pass through. */
+export function qualifyLocalRefs(sightings, tileResults) {
+  const uidByLocal = new Map()
+  for (const s of sightings) {
+    const key = `${s.tileId}|${s.localId}`
+    if (!uidByLocal.has(key)) uidByLocal.set(key, s.uid)
+  }
+  const knownLocal = new Map(
+    tileResults.map((r) => [r.tile.id, new Set(r.entities.filter((e) => e.localId != null).map((e) => String(e.localId)))]),
+  )
+  for (const s of sightings) {
+    const refs = []
+    for (const ref of s.connectsTo) {
+      const uid = uidByLocal.get(`${s.tileId}|${ref}`)
+      if (uid) {
+        if (uid !== s.uid) refs.push(uid)
+      } else if (!knownLocal.get(s.tileId)?.has(ref)) {
+        refs.push(ref)
+      }
+    }
+    s.connectsTo = refs
+  }
+}
+
+/** Maps the sighting uids `qualifyLocalRefs` left in `connectsTo` to the
+ *  entity each sighting merged into, so every reference is a tag or an entity id. */
+export function localizeConnections(entities, owner) {
+  for (const e of entities) {
+    e.connectsTo = [...new Set(e.connectsTo.map((c) => owner.get(c) ?? c))].filter((c) => c !== e.id)
+  }
+}
+
+/** Turns `connectsTo` (tags, or entity ids from resolved tile-local ids)
+ *  into real entity ids where they can be matched. Unresolvable references
+ *  are left in `connectsTo` for step 2 to reason about rather than discarded. */
 function resolveConnections(entities) {
+  const ids = new Set(entities.map((e) => e.id))
   const byTag = new Map()
   for (const e of entities) {
     const norm = normalizeTag(e.tag)
@@ -740,7 +785,7 @@ function resolveConnections(entities) {
   for (const entity of entities) {
     const resolved = new Set()
     for (const ref of entity.connectsTo) {
-      const target = byTag.get(normalizeTag(ref))
+      const target = ids.has(ref) ? ref : byTag.get(normalizeTag(ref))
       if (target && target !== entity.id) resolved.add(target)
     }
     entity.resolvedConnections = [...resolved]

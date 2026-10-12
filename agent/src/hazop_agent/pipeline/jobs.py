@@ -8,9 +8,9 @@ The job id is derived from the PDF's CONTENT, not the time or the file name:
 re-running the same drawing lands in the same directory and reuses what is
 already there, while an edited drawing gets a fresh one.
 
-By default this points at the SAME `server/.jobs/` directory the JS pipeline
-uses, with the same id scheme and artifact names, so a drawing already
-processed by either implementation is reused by the other.
+By default this is `data/jobs/` at the repo root (PIPELINE_JOBS_DIR moves it).
+The id scheme and artifact names are the old JS pipeline's (server/src/pipeline),
+which defaults to the same directory, so either can still read the other's jobs.
 """
 import hashlib
 import json
@@ -20,7 +20,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 # agent/src/hazop_agent/pipeline/jobs.py -> repo root
-DEFAULT_JOBS_ROOT = Path(__file__).resolve().parents[4] / 'server' / '.jobs'
+DEFAULT_JOBS_ROOT = Path(__file__).resolve().parents[4] / 'data' / 'jobs'
 
 
 def jobs_root():

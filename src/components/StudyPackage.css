@@ -1,0 +1,236 @@
+.pkg-backdrop {
+  --pkg-bg: #ffffff;
+  --pkg-border: #e2e2e6;
+  --pkg-text: #1a1a1f;
+  --pkg-muted: #75757e;
+  --pkg-subtle: #f6f6f8;
+  --pkg-accent: #2563eb;
+  --pkg-ok: #11663a;
+  --pkg-ok-bg: #dff3e6;
+  --pkg-partial: #7a5600;
+  --pkg-partial-bg: #fdf3d1;
+  --pkg-missing: #991b1b;
+  --pkg-missing-bg: #fbd5d5;
+  --pkg-error-bg: #fdecea;
+  --pkg-error-text: #b42318;
+
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  /* `right` comes from the chat panel's width, inline. */
+  z-index: 20;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  justify-content: center;
+  padding: 16px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .pkg-backdrop {
+    --pkg-bg: #17181d;
+    --pkg-border: #2b2c33;
+    --pkg-text: #f0f0f2;
+    --pkg-muted: #9a9aa3;
+    --pkg-subtle: #1e1f26;
+    --pkg-accent: #3b82f6;
+    --pkg-ok: #86efac;
+    --pkg-ok-bg: #133524;
+    --pkg-partial: #fcd34d;
+    --pkg-partial-bg: #3a2f0f;
+    --pkg-missing: #fca5a5;
+    --pkg-missing-bg: #4a1717;
+    --pkg-error-bg: #3a1d1f;
+    --pkg-error-text: #fca5a5;
+  }
+}
+
+.pkg {
+  width: min(880px, 100%);
+  display: flex;
+  flex-direction: column;
+  background: var(--pkg-bg);
+  color: var(--pkg-text);
+  border: 1px solid var(--pkg-border);
+  border-radius: 12px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+  font-size: 13px;
+}
+
+.pkg-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--pkg-border);
+}
+
+.pkg-title {
+  flex: 1;
+  min-width: 0;
+}
+
+.pkg-title h2 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.pkg-muted {
+  color: var(--pkg-muted);
+  font-size: 12px;
+}
+
+.pkg-close {
+  background: none;
+  border: none;
+  color: var(--pkg-muted);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+
+.pkg-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--pkg-border);
+  background: var(--pkg-partial-bg);
+  color: var(--pkg-text);
+}
+
+.pkg-summary-ready {
+  background: var(--pkg-ok-bg);
+}
+
+.pkg-error {
+  margin: 10px 16px 0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--pkg-error-bg);
+  color: var(--pkg-error-text);
+}
+
+.pkg-body {
+  flex: 1;
+  overflow: auto;
+  padding: 12px 16px 16px;
+}
+
+.pkg-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pkg-item {
+  border: 1px solid var(--pkg-border);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.pkg-item-drag {
+  border-color: var(--pkg-accent);
+  background: var(--pkg-subtle);
+}
+
+.pkg-item-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pkg-item-name {
+  flex: 1;
+  font-weight: 600;
+}
+
+.pkg-status {
+  font-size: 11px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.pkg-status-provided { background: var(--pkg-ok-bg); color: var(--pkg-ok); }
+.pkg-status-partial { background: var(--pkg-partial-bg); color: var(--pkg-partial); }
+.pkg-status-missing { background: var(--pkg-missing-bg); color: var(--pkg-missing); }
+
+.pkg-why,
+.pkg-from-drawing {
+  margin: 6px 0 0;
+  color: var(--pkg-muted);
+}
+
+.pkg-from-drawing {
+  color: var(--pkg-partial);
+}
+
+.pkg-files {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pkg-files li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--pkg-subtle);
+}
+
+.pkg-files a {
+  color: var(--pkg-accent);
+  overflow-wrap: anywhere;
+}
+
+.pkg-files select {
+  margin-left: auto;
+  font: inherit;
+  font-size: 12px;
+  max-width: 220px;
+}
+
+.pkg button,
+.pkg select {
+  font: inherit;
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--pkg-border);
+  background: transparent;
+  color: var(--pkg-text);
+  cursor: pointer;
+}
+
+.pkg button:disabled,
+.pkg select:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.pkg .pkg-attach {
+  border-color: var(--pkg-accent);
+  color: var(--pkg-accent);
+}
+
+.pkg .pkg-close {
+  border: none;
+  font-size: 22px;
+}
+
+.pkg-foot {
+  margin: 12px 0 0;
+}

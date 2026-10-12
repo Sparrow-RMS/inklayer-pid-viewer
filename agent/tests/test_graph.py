@@ -46,6 +46,7 @@ class FakeModel:
 
     def __init__(self, fail=False, forget_interlocks_first=False):
         self.calls = []
+        self.prompts = []  # (schema name, prompt text) per call
         self.fail = fail
         self.forget_interlocks_first = forget_interlocks_first
 
@@ -54,6 +55,7 @@ class FakeModel:
         if self.fail:
             raise RuntimeError('model unavailable')
         text = '\n'.join(part.get('text', '') for part in content)
+        self.prompts.append((schema_name, text))
         if schema_name == 'pid_tile_inventory':
             # Report nothing: step 1 must still recover every tag-shaped text
             # run from the PDF text layer (synthesized stubs).
@@ -117,7 +119,7 @@ async def run(payload):
     return await build_graph().ainvoke(payload)
 
 
-ALL_COMPUTED = {'step1': 'computed', 'step2': 'computed', 'sheet': 'computed', 'step3': 'computed', 'consolidate': 'computed'}
+ALL_COMPUTED = {'step1': 'computed', 'network': 'computed', 'step2': 'computed', 'sheet': 'computed', 'step3': 'computed', 'consolidate': 'computed'}
 
 
 async def test_new_pdf_runs_every_step_and_builds_rules_based_nodes(jobs_dir, fake_model):
@@ -192,7 +194,7 @@ async def test_second_run_reuses_every_artifact_without_model_calls(jobs_dir, fa
     second = await run({'job_id': first['job_id'], 'max_nodes': 1})
 
     assert len(fake_model.calls) == calls
-    assert second['step_status'] == {'step1': 'cached', 'step2': 'cached', 'sheet': 'cached', 'step3': 'replayed', 'consolidate': 'replayed'}
+    assert second['step_status'] == {'step1': 'cached', 'network': 'cached', 'step2': 'cached', 'sheet': 'cached', 'step3': 'replayed', 'consolidate': 'replayed'}
     assert second['upstream_changed'] is False
 
 
@@ -202,7 +204,7 @@ async def test_force_from_recomputes_that_step_and_everything_after(jobs_dir, fa
 
     state = await run({'job_id': first['job_id'], 'force_from': 'sheet'})
 
-    assert state['step_status'] == {'step1': 'cached', 'step2': 'cached', 'sheet': 'computed', 'step3': 'computed'}
+    assert state['step_status'] == {'step1': 'cached', 'network': 'cached', 'step2': 'cached', 'sheet': 'computed', 'step3': 'computed'}
     assert set(fake_model.calls) == {'pid_interlock_table', 'pid_hazop_nodes'}
     assert 'consolidate' not in state['step_status']  # no max_nodes -> routed straight to END
 
@@ -216,8 +218,9 @@ async def test_an_old_pairwise_job_gets_rules_based_nodes_then_replays_free(jobs
 
     state = await run({'job_id': 'pid-f9daf1158400', 'max_nodes': 9})
 
-    # Steps 1-2 are reused; the pairwise step3.json and everything built on it are not.
-    assert state['step_status'] == {'step1': 'cached', 'step2': 'cached', 'sheet': 'computed', 'step3': 'computed', 'consolidate': 'computed'}
+    # Step 1 is reused. The job predates pipe tracing, so the network is traced
+    # now and step 2 onward recompute once to use it.
+    assert state['step_status'] == {'step1': 'cached', 'network': 'computed', 'step2': 'computed', 'sheet': 'computed', 'step3': 'computed', 'consolidate': 'computed'}
     assert state['step3']['step'] == 'step3-nodes'
     assert 'pid_node_relatedness' in fake.calls  # old scores were for old nodes, never replayed
     assert state['summaries']['consolidate']['nodes'] == 9
@@ -231,7 +234,7 @@ async def test_an_old_pairwise_job_gets_rules_based_nodes_then_replays_free(jobs
     # Replay after that is free, and retargeting reuses the new scores.
     blocked = use_model(monkeypatch, FakeModel(fail=True))
     again = await run({'job_id': 'pid-f9daf1158400', 'replay': True, 'max_nodes': 9})
-    assert again['step_status'] == {'step1': 'replayed', 'step2': 'replayed', 'sheet': 'replayed', 'step3': 'replayed', 'consolidate': 'replayed'}
+    assert again['step_status'] == {'step1': 'replayed', 'network': 'cached', 'step2': 'replayed', 'sheet': 'replayed', 'step3': 'replayed', 'consolidate': 'replayed'}
     assert again['upstream_changed'] is False  # the rules reproduce every stored artifact exactly
     retarget = await run({'job_id': 'pid-f9daf1158400', 'max_nodes': 5})
     assert retarget['step_status']['consolidate'] == 'replayed'
@@ -240,13 +243,14 @@ async def test_an_old_pairwise_job_gets_rules_based_nodes_then_replays_free(jobs
 
 
 async def test_a_step_that_needs_the_model_without_a_key_fails_cleanly(jobs_dir, monkeypatch):
-    copy_job('pid-sample-8c299cdeb0b7', jobs_dir)  # has steps 1-3 but no sheet data
+    copy_job('pid-sample-8c299cdeb0b7', jobs_dir)  # has steps 1-3 but no sheet data or traced network
     monkeypatch.delenv('OPENAI_API_KEY', raising=False)
 
     state = await run({'job_id': 'pid-sample-8c299cdeb0b7'})
 
-    assert 'sheet needs a model call' in state['failure'] and 'OPENAI_API_KEY is not set' in state['failure']
-    assert state['step_status'] == {'step1': 'cached', 'step2': 'cached'}
+    # Tracing is free, so it runs; the network is new, so step 2 must recompute and needs the key.
+    assert 'step2 needs a model call' in state['failure'] and 'OPENAI_API_KEY is not set' in state['failure']
+    assert state['step_status'] == {'step1': 'cached', 'network': 'computed'}
 
 
 async def test_unusable_step1_stops_the_run_before_paying_for_step2(jobs_dir, tmp_path, fake_model):
@@ -284,4 +288,4 @@ async def test_missing_input_fails_at_ingest(jobs_dir):
 
 def test_graph_shape():
     g = build_graph().get_graph()
-    assert set(g.nodes) == {'__start__', 'ingest', 'extract', 'classify', 'sheet_data', 'cluster', 'consolidate', '__end__'}
+    assert set(g.nodes) == {'__start__', 'ingest', 'extract', 'trace', 'classify', 'sheet_data', 'cluster', 'consolidate', '__end__'}

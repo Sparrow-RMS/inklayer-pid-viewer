@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { pickNodeColor } from '../lib/annotationFromNode'
+import { worksheetNodeId } from '../lib/hazopApi'
 import './ChatPanel.css'
 
 export interface BBox {
@@ -18,6 +19,8 @@ interface ProposedNodeBase {
   pageIndex: number
   label: string
   description: string
+  /** Step 3's node id, for pipeline nodes — keys the node's HAZOP worksheet. */
+  nodeId?: string
 }
 
 /** One member line's traced route inside a pipeline-clustered node —
@@ -25,7 +28,10 @@ interface ProposedNodeBase {
  * nothing in the frontend needs to resolve it back further right now. */
 export interface RouteSegment {
   entityId: string
+  /** Ordered with the flow when `flow` is true. */
   points: LinePoint[]
+  /** Set on routes traced from the drawing: whether the flow direction is known. */
+  flow?: boolean
 }
 
 /** The HAZOP node-creation rules' Step 6 fields, as the agent's rules-based
@@ -34,6 +40,39 @@ export interface HazopBoundary {
   tag: string
   kind: string
   note: string
+}
+
+/** One parameter the node studies (node rules Step 6a), with its own safeguards. */
+export interface HazopParameter {
+  parameter: string
+  name: string
+  highSafeguards: string[]
+  lowSafeguards: string[]
+}
+
+export interface HazopDeviation {
+  guideword: string
+  /** Step 6a parameter: flow, level, pressure, temperature, composition, mixing, … */
+  parameter: string
+  /** What deviates, e.g. "flow into ST-V303". */
+  detail: string
+  /** One item per cause, each naming where it happens. */
+  causes: HazopCause[]
+}
+
+export interface HazopCause {
+  /** e.g. "XV-001 fails closed on 16\"-HSD-065-A21A", or "not credible: …". */
+  cause: string
+  /** Valve tags, line numbers and equipment tags the cause happens at. */
+  tags: string[]
+  consequences: HazopConsequence[]
+}
+
+export interface HazopConsequence {
+  /** What happens if the cause is not stopped: what is affected, and the harm. */
+  consequence: string
+  /** Tags / C&E rows that prevent or mitigate it. */
+  safeguards: string[]
 }
 
 export interface HazopDetails {
@@ -47,8 +86,9 @@ export interface HazopDetails {
   controlLoops: string[]
   interlockRefs: string[]
   reliefDevices: { tag: string; setPressure: string }[]
-  protection: { criticalParameter: string; highSafeguards: string[]; lowSafeguards: string[]; vacuumProtection: string | null }
-  keyDeviations: { guideword: string; parameter: string; credibleCause: string }[]
+  parameters: HazopParameter[]
+  vacuumProtection: string | null
+  keyDeviations: HazopDeviation[]
   operatingModes: string[]
   utilitiesAsSafeguards: string[]
   typicalOf: string | null
@@ -63,9 +103,8 @@ export type ProposedNode =
   | (ProposedNodeBase & { shapeType: 'path'; path: LinePoint[] })
   | (ProposedNodeBase & { shapeType: 'rect'; bbox: BBox })
   | (ProposedNodeBase & {
-      /** A node produced by the step1→2→3 pipeline (`server/src/pipeline`),
-       * loaded from a step3/step3-consolidated.json export rather than the
-       * single-shot analyze endpoint. Unlike 'path'/'rect', it can carry
+      /** A node produced by the agent's pipeline (a step3 /
+       * step3-consolidated.json document). Unlike 'path'/'rect', it can carry
        * MULTIPLE traced routes — one per line entity the clustering folded
        * in — plus an overall bbox as a fallback for a node with no traced
        * line at all (a pure equipment/utility node). */
@@ -102,6 +141,9 @@ export interface ChatPanelProps {
   onNodeStatusChange: (messageId: string, nodeIndex: number, node: ReviewedNode, status: NodeStatus) => void
   collapsed: boolean
   onToggleCollapsed: () => void
+  onOpenWorksheet: (node: ReviewedNode) => void
+  /** Worksheet row count per node id, for the button label. */
+  worksheetCounts: Record<string, number>
 }
 
 let nextId = 0
@@ -122,8 +164,8 @@ function HazopSheet({ h }: { h: HazopDetails }) {
     ['Controls', list(h.controlLoops)],
     ['Interlocks', list(h.interlockRefs)],
     ['Relief devices', h.reliefDevices.length ? h.reliefDevices.map((r) => `${r.tag} @ ${r.setPressure}`).join(', ') : '—'],
-    ['Protection', `${h.protection.criticalParameter || 'critical parameter'} HIGH: ${list(h.protection.highSafeguards)}; LOW: ${list(h.protection.lowSafeguards)}` +
-      (h.protection.vacuumProtection ? `; vacuum: ${h.protection.vacuumProtection}` : '')],
+    ...h.parameters.map((p): [string, string] => [p.name || p.parameter, `HIGH: ${list(p.highSafeguards)}; LOW: ${list(p.lowSafeguards)}`]),
+    ...(h.vacuumProtection ? [['Vacuum', h.vacuumProtection] as [string, string]] : []),
     ['Operating modes', list(h.operatingModes)],
     ['Utilities (safeguards)', list(h.utilitiesAsSafeguards)],
   ]
@@ -147,7 +189,20 @@ function HazopSheet({ h }: { h: HazopDetails }) {
           <ul>
             {h.keyDeviations.map((d, i) => (
               <li key={i}>
-                <strong>{d.guideword} {d.parameter}</strong> — {d.credibleCause}
+                <strong>{d.guideword} {d.detail || d.parameter}</strong>
+                <ul>
+                  {d.causes.map((c, j) => (
+                    <li key={j}>
+                      {c.cause}
+                      {c.consequences.map((q, k) => (
+                        <div key={k}>
+                          → {q.consequence || 'consequence to describe'}
+                          {q.safeguards.length > 0 && <> · safeguards: {q.safeguards.join(', ')}</>}
+                        </div>
+                      ))}
+                    </li>
+                  ))}
+                </ul>
               </li>
             ))}
           </ul>
@@ -172,9 +227,13 @@ function HazopSheet({ h }: { h: HazopDetails }) {
 function NodeCard({
   node,
   onStatusChange,
+  onOpenWorksheet,
+  worksheetCount,
 }: {
   node: ReviewedNode
   onStatusChange: (status: NodeStatus) => void
+  onOpenWorksheet: () => void
+  worksheetCount: number
 }) {
   return (
     <div className={`node-card node-card-${node.status}`}>
@@ -212,6 +271,11 @@ function NodeCard({
         {node.status !== 'accepted' && <button onClick={() => onStatusChange('accepted')}>Accept</button>}
         {node.status !== 'rejected' && <button onClick={() => onStatusChange('rejected')}>Reject</button>}
         {node.status !== 'pending' && <button onClick={() => onStatusChange('pending')}>Undo</button>}
+        {node.status !== 'rejected' && (
+          <button className="node-card-worksheet" onClick={onOpenWorksheet}>
+            HAZOP worksheet{worksheetCount ? ` (${worksheetCount})` : ''}
+          </button>
+        )}
       </div>
     </div>
   )
@@ -224,6 +288,8 @@ export default function ChatPanel({
   onNodeStatusChange,
   collapsed,
   onToggleCollapsed,
+  onOpenWorksheet,
+  worksheetCounts,
 }: ChatPanelProps) {
   const [draft, setDraft] = useState('')
   const listRef = useRef<HTMLDivElement>(null)
@@ -260,7 +326,7 @@ export default function ChatPanel({
       <div className="chat-panel-messages" ref={listRef}>
         {messages.length === 0 && (
           <div className="chat-panel-empty">
-            Ask about this drawing, or run "Analyze for HAZOP nodes" to have the assistant propose nodes here.
+            Run the HAZOP pipeline to get this drawing's nodes, then ask about them here: merge, rename or inspect nodes.
           </div>
         )}
         {messages.map((m) => {
@@ -268,7 +334,13 @@ export default function ChatPanel({
             return (
               <div key={m.id} className="node-list">
                 {m.nodes.map((node, i) => (
-                  <NodeCard key={i} node={node} onStatusChange={(status) => onNodeStatusChange(m.id, i, node, status)} />
+                  <NodeCard
+                    key={i}
+                    node={node}
+                    onStatusChange={(status) => onNodeStatusChange(m.id, i, node, status)}
+                    onOpenWorksheet={() => onOpenWorksheet(node)}
+                    worksheetCount={worksheetCounts[worksheetNodeId(node)] ?? 0}
+                  />
                 ))}
               </div>
             )

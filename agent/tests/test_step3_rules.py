@@ -33,7 +33,7 @@ HAZOP_FIELDS = {
     'boundaryFrom': [], 'boundaryTo': [], 'equipmentTags': [], 'designIntent': '',
     'designConditions': {'pressure': 'ATM', 'temperature': '65 C', 'material': 'SS304', 'source': 'data block'},
     'controlLoops': [], 'interlockRefs': [], 'reliefDevices': [],
-    'protection': {'criticalParameter': 'level', 'highSafeguards': [], 'lowSafeguards': [], 'vacuumProtection': None},
+    'parameters': [{'parameter': 'level', 'name': 'level', 'highSafeguards': [], 'lowSafeguards': []}], 'vacuumProtection': None,
     'keyDeviations': [], 'operatingModes': [], 'utilitiesAsSafeguards': [], 'typicalOf': None, 'typicalOfName': None,
     'differencesFromTypical': [], 'justification': [], 'unverified': [],
 }
@@ -59,9 +59,10 @@ def test_new_equipment_with_no_interlock_is_flagged():
     assert [f['check'] for f in findings] == ['unprotected-new-scope']
 
 
-def node(local_id, entity_ids, refs=(), revised=False, high=('LSHH',), low=('LSL',), boundaries=()):
+def node(local_id, entity_ids, refs=(), revised=False, high=('LSHH',), low=('LSL',), boundaries=(), parameters=None, deviations=()):
     return {'localId': local_id, 'name': local_id, 'entityIds': list(entity_ids), 'interlockRefs': list(refs),
-            'protection': {'criticalParameter': 'level', 'highSafeguards': list(high), 'lowSafeguards': list(low), 'vacuumProtection': None},
+            'parameters': parameters if parameters is not None else [{'parameter': 'level', 'name': 'level', 'highSafeguards': list(high), 'lowSafeguards': list(low)}],
+            'vacuumProtection': None, 'keyDeviations': list(deviations),
             'boundaryFrom': list(boundaries), 'boundaryTo': [], 'revisedScope': revised, 'operatingModes': [], 'equipmentTags': []}
 
 
@@ -148,3 +149,112 @@ def test_out_of_scope_items_are_not_orphans():
 def test_too_many_nodes_is_a_warning():
     found = checks(rules.validate([node(f'N{i}', []) for i in range(8)], [], [], set()))
     assert found['S-node-count']['severity'] == 'warning'
+
+
+# --------------------------------------------- parameters, coverage, pressure
+
+def dev(guideword, parameter, safeguards=()):
+    return {'guideword': guideword, 'parameter': parameter, 'detail': parameter,
+            'causes': [{'cause': 'c', 'tags': [], 'consequences': [{'consequence': 'q', 'safeguards': list(safeguards)}]}]}
+
+
+def rated(eid, tag, type_, pressure, category='equipment'):
+    return entity(eid, category, tag, type=type_, attributes=[{'key': 'designPressure', 'value': pressure}])
+
+
+def test_pressure_ratings_are_read_in_any_unit():
+    assert rules.pressure_bar_g('11.5 bar (g)') == 11.5
+    assert round(rules.pressure_bar_g('3.5 kg/cm^2g'), 3) == 3.432
+    assert rules.pressure_bar_g('350 kPa(g)') == 3.5
+    assert rules.pressure_bar_g('ATM+FLL / -50mm WC') == 0.0  # atmospheric; the vacuum limit is not a rating
+    assert rules.pressure_bar_g('HOLD') is None
+
+
+def test_equipment_rated_below_its_pump_is_flagged_and_an_ab_data_block_rates_both():
+    # The tank-farm sheet: 3.5 kg/cm2g filters in the same node as 11.5 bar(g) pumps.
+    ents = [rated('r1', 'F-V303A/B', 'equipment data callout', '3.5 kg/cm^2g', category='equipment_list_row'),
+            entity('f1', 'equipment', 'F-V303A', type='vertical filter'), entity('f2', 'equipment', 'F-V303B', type='vertical filter'),
+            rated('p1', 'P-V303A', 'motor-driven transfer pump', '11.5 bar (g)')]
+    found = checks(rules.validate([node('N1', ['f1', 'f2', 'p1'])], ents, [], set()))['V7-design-pressure']
+    assert 'F-V303A' in found['detail'] and 'F-V303B' in found['detail'] and '11.5 bar g' in found['detail']
+    assert sorted(found['entityIds']) == ['f1', 'f2']
+
+
+def test_no_pressure_finding_without_a_source_in_the_node():
+    ents = [rated('f1', 'F-1', 'filter', '3.5 kg/cm^2g'), rated('p1', 'P-1', 'pump', '11.5 bar (g)')]
+    assert 'V7-design-pressure' not in checks(rules.validate([node('N1', ['f1']), node('N2', ['p1'])], ents, [], set()))
+
+
+def test_every_parameter_the_equipment_needs_must_have_its_deviations():
+    ents = [entity('t1', 'equipment', 'T-1', type='storage tank'), entity('p1', 'equipment', 'P-1', type='pump'),
+            entity('l1', 'line', 'L-1')]
+    # Flow fully covered, nothing else: level, pressure, temperature and composition are missing.
+    devs = [dev(g, 'flow') for g in ('NO', 'MORE', 'LESS', 'REVERSE')]
+    detail = checks(rules.validate([node('N1', ['t1', 'p1', 'l1'], deviations=devs)], ents, [], set()))['V6-parameter-coverage']['detail']
+    for missing in ('MORE level', 'LESS level', 'MORE pressure', 'LESS pressure', 'MORE temperature', 'OTHER THAN/AS WELL AS/PART OF composition'):
+        assert missing in detail
+    assert 'flow' not in detail.split('(required')[0]
+
+
+def test_full_coverage_raises_nothing_and_misdirected_counts_as_other_than():
+    ents = [entity('t1', 'equipment', 'T-1', type='storage tank')]
+    devs = [dev(g, p) for p in ('level', 'pressure', 'temperature') for g in ('MORE', 'LESS')] + [dev('MISDIRECTED', 'composition')]
+    assert 'V6-parameter-coverage' not in checks(rules.validate([node('N1', ['t1'], deviations=devs)], ents, [], set()))
+
+
+def test_protection_gaps_are_reported_for_every_parameter():
+    params = [{'parameter': 'level', 'name': 'tank level', 'highSafeguards': ['LSHH'], 'lowSafeguards': ['LSL']},
+              {'parameter': 'pressure', 'name': 'pump discharge pressure', 'highSafeguards': ['PSV-1'], 'lowSafeguards': []},
+              {'parameter': 'composition', 'name': 'material', 'highSafeguards': [], 'lowSafeguards': []}]
+    detail = checks(rules.validate([node('N1', [], parameters=params)], [], [], set()))['V4-protection-gap']['detail']
+    assert 'LOW pump discharge pressure' in detail
+    assert 'level' not in detail and 'material' not in detail  # covered / no high-low sense
+
+
+def test_old_single_parameter_nodes_are_read_in_the_new_format():
+    old = {'localId': 'N1', 'protection': {'criticalParameter': 'level', 'highSafeguards': ['LSHH'], 'lowSafeguards': [], 'vacuumProtection': 'NONE SHOWN'},
+           'keyDeviations': [{'guideword': 'MISDIRECTED', 'parameter': 'flow into tank', 'credibleCause': 'wrong T-valve'}]}
+    new = rules.normalize_hazop_fields(old)
+    assert 'protection' not in new and new['vacuumProtection'] == 'NONE SHOWN'
+    assert new['parameters'] == [{'parameter': 'level', 'name': 'level', 'highSafeguards': ['LSHH'], 'lowSafeguards': []}]
+    assert new['keyDeviations'] == [{'guideword': 'OTHER THAN', 'parameter': 'flow', 'detail': 'flow into tank',
+                                     'causes': [{'cause': 'wrong T-valve', 'tags': [], 'consequences': []}]}]
+    assert rules.normalize_hazop_fields(new) is new
+
+
+def test_reduced_option_unions_parameters_by_name():
+    a = {**HAZOP_FIELDS, 'localId': 'N1', 'name': 'A', 'revisedScope': False,
+         'parameters': [{'parameter': 'level', 'name': 'level', 'highSafeguards': ['LSHH-1'], 'lowSafeguards': []}]}
+    b = {**HAZOP_FIELDS, 'localId': 'N2', 'name': 'B', 'revisedScope': False,
+         'parameters': [{'parameter': 'level', 'name': 'Level', 'highSafeguards': ['LSHH-2'], 'lowSafeguards': ['LSL-2']},
+                        {'parameter': 'flow', 'name': 'flow', 'highSafeguards': [], 'lowSafeguards': []}]}
+    merged = consolidate.merge_hazop([{'hazop': a}, {'hazop': b}])
+    assert merged['parameters'] == [{'parameter': 'level', 'name': 'level', 'highSafeguards': ['LSHH-1', 'LSHH-2'], 'lowSafeguards': ['LSL-2']},
+                                    {'parameter': 'flow', 'name': 'flow', 'highSafeguards': [], 'lowSafeguards': []}]
+
+
+def test_a_typical_node_is_not_held_to_parameter_coverage():
+    ents = [entity('t1', 'equipment', 'T-1', type='storage tank')]
+    typical = {**node('N2', ['t1']), 'typicalOf': 'N1'}
+    assert 'V6-parameter-coverage' not in checks(rules.validate([typical], ents, [], set()))
+
+
+def test_existing_equipment_in_a_revised_node_is_an_error():
+    ents = [entity('p1', 'equipment', 'P-V303A'), entity('v1', 'valve', 'HV-NEW'), entity('v2', 'valve', 'HV-NEW2')]
+    found = checks(rules.validate([node('N3', ['p1', 'v1', 'v2'], revised=True)], ents, [], {'v1', 'v2'}))
+    assert found['R6-existing-in-revised']['severity'] == 'error' and 'P-V303A' in found['R6-existing-in-revised']['detail']
+    # A revised node holding only red items is fine.
+    assert 'R6-existing-in-revised' not in checks(rules.validate([node('N8', ['v1', 'v2'], revised=True)], ents, [], {'v1', 'v2'}))
+
+
+def test_a_deviation_with_one_cause_sentence_is_read_as_a_list_of_causes():
+    node = {'localId': 'N1', 'parameters': [], 'keyDeviations': [
+        {'guideword': 'NO', 'parameter': 'flow', 'detail': 'flow into TK-01', 'credibleCause': 'XV-001 closed', 'safeguards': ['LAL-1']}]}
+    (d,) = rules.normalize_hazop_fields(node)['keyDeviations']
+    assert d == {'guideword': 'NO', 'parameter': 'flow', 'detail': 'flow into TK-01',
+                 'causes': [{'cause': 'XV-001 closed', 'tags': [], 'consequences': [{'consequence': '', 'safeguards': ['LAL-1']}]}]}
+    # the current format, cause -> consequences -> safeguards, is kept as it is
+    current = {'localId': 'N1', 'parameters': [], 'keyDeviations': [{'guideword': 'MORE', 'parameter': 'level', 'detail': 'level in TK-01', 'causes': [
+        {'cause': 'XV-001 fails open', 'tags': ['XV-001'], 'consequences': [{'consequence': 'TK-01 overfills; HSD spill', 'safeguards': ['LAHH-1']}]}]}]}
+    assert rules.normalize_hazop_fields(current) is current
+

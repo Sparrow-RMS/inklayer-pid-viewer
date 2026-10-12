@@ -14,6 +14,22 @@ takes minutes shows progress as it goes:
 `document` has the same shape as the step3.json / step3-consolidated.json the
 viewer's file loader reads. Runs go through the same content-addressed job
 directory as the CLI, so uploading a drawing again reuses its cached steps.
+
+The HAZOP worksheet routes live in worksheets.py, the study package (supporting
+documents and readiness checklist) in study_package.py; both under /agent/hazop/.
+
+Threads: a drawing's job id is its thread id. A pipeline run and the chat
+assistant (chat.py) run under the same thread, so they share one
+conversation, and one thread in LangSmith:
+
+    POST /agent/chat {"threadId": <job id>, "message": "..."}   newline-delimited events:
+        {"type": "tool", "name": ..., "args": ...}   the assistant is using a tool
+        {"type": "nodes", "document": ...}          the node breakdown changed (merge, rename, undo)
+        {"type": "message", "text": ...}            the reply
+        {"type": "error", "message": ...}
+    GET  /agent/chat/{threadId}                     the conversation so far
+
+The run result's document has the reviewer's saved edits applied (pipeline/edits.py).
 """
 import asyncio
 import json
@@ -24,12 +40,18 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 
+from . import chat as chat_agent
 from .graph.builder import graph
+from .pipeline import edits, jobs
+from .study_package import router as study_package_router
+from .worksheets import router as worksheets_router
 
 # One run at a time: two runs of the same drawing would write the same job directory.
 _run_lock = asyncio.Lock()
 
 app = FastAPI(title='hazop-agent')
+app.include_router(worksheets_router)
+app.include_router(study_package_router)
 
 
 @app.get('/agent/health')
@@ -67,10 +89,13 @@ async def _stream(data, name, max_nodes):
             payload = {'pdf_path': str(pdf_path)}
             if max_nodes:
                 payload['max_nodes'] = max_nodes
+            # The drawing's thread: the same id the viewer and the chat use.
+            thread_id = jobs.job_id_for(name, data)
+            config = {**chat_agent.thread_config(thread_id), 'run_name': 'hazop-pipeline'}
 
             final = {}
             try:
-                async for mode, chunk in graph.astream(payload, stream_mode=['custom', 'updates', 'values']):
+                async for mode, chunk in graph.astream(payload, config=config, stream_mode=['custom', 'updates', 'values']):
                     if mode == 'custom':
                         message = describe_progress(chunk)
                         if message:
@@ -89,15 +114,48 @@ async def _stream(data, name, max_nodes):
         yield _line({'type': 'error', 'message': final['failure'], 'issues': final.get('issues', [])})
         return
     document = final.get('consolidated') if max_nodes else None
+    base = 'step3-consolidated' if document is not None else 'step3'
+    job_id = final.get('job_id')
+    issues = list(final.get('issues', []))
+    document = document or final.get('step3')
+    if job_id:
+        # The reviewer's merges and renames, kept across runs.
+        edits.set_view_base(job_id, base)
+        document, stale = edits.apply_edits(document, edits.load_edits(job_id, base))
+        issues += [{'step': 'edits', 'problem': f"your {e['type']} of {', '.join(e['labels'])} no longer fits the nodes and was not applied"}
+                   for e in stale]
     yield _line({
         'type': 'result',
-        'jobId': final.get('job_id'),
+        'jobId': job_id,
+        'threadId': job_id,
         'fileName': final.get('file_name'),
-        'consolidated': document is not None,
-        'document': document or final.get('step3'),
+        'consolidated': base == 'step3-consolidated',
+        'document': document,
         # Step 7 validation of the rules-based breakdown, per page (the reduced
         # option is built from these nodes, so its report is this one).
         'validation': [{'pageIndex': p['pageIndex'], **p['validation']} for p in (final.get('step3') or {}).get('pages', [])],
         'summaries': final.get('summaries', {}),
-        'issues': final.get('issues', []),
+        'issues': issues,
     })
+
+
+@app.post('/agent/chat')
+async def chat(body: dict):
+    thread_id = (body or {}).get('threadId')
+    message = ((body or {}).get('message') or '').strip()
+    if not thread_id or not message:
+        raise HTTPException(422, 'threadId and message are required')
+
+    async def stream():
+        try:
+            async for event in chat_agent.chat(thread_id, message):
+                yield _line(event)
+        except Exception as err:  # noqa: BLE001 — reported to the viewer instead of a dropped stream
+            yield _line({'type': 'error', 'message': f'{type(err).__name__}: {err}'})
+
+    return StreamingResponse(stream(), media_type='application/x-ndjson')
+
+
+@app.get('/agent/chat/{thread_id}')
+async def chat_history(thread_id: str):
+    return {'threadId': thread_id, 'messages': await chat_agent.history(thread_id)}

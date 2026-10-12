@@ -2,7 +2,10 @@
 rules, Step 6). A node references step 2 process ids and step 1 entity ids
 only; its geometry is derived from them, never from the model."""
 
-RULE_IDS = ['O1', 'O2', 'O3', 'O4', 'O5', 'R1', 'R2', 'R3', 'R4', 'R5', 'R6', 'G1', 'G2', 'G3', 'G4', 'G5', 'G6', 'D1', 'D2', 'D3', 'D4', 'S']
+RULE_IDS = ['O1', 'O2', 'O3', 'O4', 'O5', 'R1', 'R2', 'R3', 'R4', 'R5', 'R6', 'G1', 'G2', 'G3', 'G4', 'G5', 'G6', 'D1', 'D2', 'D3', 'D4', 'D5', 'S']
+# Step 6a. "mixing" is agitation; "composition" covers wrong material and contamination.
+PARAMETERS = ['flow', 'level', 'pressure', 'temperature', 'composition', 'mixing', 'phase', 'reaction', 'other']
+GUIDEWORDS = ['NO', 'MORE', 'LESS', 'REVERSE', 'AS WELL AS', 'PART OF', 'OTHER THAN', 'EARLY', 'LATE', 'BEFORE', 'AFTER']
 BOUNDARY_KINDS = ['valve', 'flange', 'nozzle', 'connector', 'equipment', 'line', 'other']
 SHEET_PATTERNS = ['P1', 'P2', 'P3']
 FINDING_CHECKS = ['tag-not-on-drawing', 'tag-not-in-table', 'open-and-closed', 'permissive-trip-mismatch',
@@ -66,30 +69,37 @@ NODE_BUILD_SCHEMA = {
                             'additionalProperties': False,
                         },
                     },
-                    'protection': {
-                        'type': 'object',
-                        'properties': {
-                            'criticalParameter': {'type': 'string', 'description': 'level, pressure or flow.'},
-                            'highSafeguards': {**_STRS, 'description': 'Tags protecting against HIGH.'},
-                            'lowSafeguards': {**_STRS, 'description': 'Tags protecting against LOW.'},
-                            'vacuumProtection': {'type': ['string', 'null'], 'description': 'For an atmospheric tank: the vent / breather / VB tag, or "NONE SHOWN". Null if no atmospheric tank.'},
+                    'parameters': {
+                        'type': 'array',
+                        'items': {
+                            'type': 'object',
+                            'properties': {
+                                'parameter': {'type': 'string', 'enum': PARAMETERS},
+                                'name': {'type': 'string', 'description': 'What exactly, e.g. "ST-V303 level", "filter differential pressure".'},
+                                'highSafeguards': {**_STRS, 'description': 'Tags / C&E rows protecting against HIGH.'},
+                                'lowSafeguards': {**_STRS, 'description': 'Tags / C&E rows protecting against LOW.'},
+                            },
+                            'required': ['parameter', 'name', 'highSafeguards', 'lowSafeguards'],
+                            'additionalProperties': False,
                         },
-                        'required': ['criticalParameter', 'highSafeguards', 'lowSafeguards', 'vacuumProtection'],
-                        'additionalProperties': False,
+                        'description': 'EVERY parameter that applies to the node (Step 6a), not only the critical one.',
                     },
+                    'vacuumProtection': {'type': ['string', 'null'], 'description': 'For an atmospheric tank: the vent / breather / VB tag, or "NONE SHOWN". Null if no atmospheric tank.'},
                     'keyDeviations': {
                         'type': 'array',
                         'items': {
                             'type': 'object',
                             'properties': {
-                                'guideword': {'type': 'string', 'description': 'NO, MORE, LESS, REVERSE, AS WELL AS, PART OF, OTHER THAN, MISDIRECTED.'},
-                                'parameter': _STR,
-                                'credibleCause': _STR,
+                                'guideword': {'type': 'string', 'enum': GUIDEWORDS, 'description': 'Misrouting to a wrong destination is OTHER THAN flow.'},
+                                'parameter': {'type': 'string', 'enum': PARAMETERS},
+                                'detail': {'type': 'string', 'description': 'What deviates, e.g. "flow into ST-V303", "filter differential pressure".'},
+                                'credibleCause': {'type': 'string', 'description': 'The cause in this node, or "not credible: <why>".'},
+                                'safeguards': {**_STRS, 'description': 'Tags / C&E rows that answer this deviation. Empty if none shown.'},
                             },
-                            'required': ['guideword', 'parameter', 'credibleCause'],
+                            'required': ['guideword', 'parameter', 'detail', 'credibleCause', 'safeguards'],
                             'additionalProperties': False,
                         },
-                        'description': 'Top 5-8 credible guideword/parameter pairs.',
+                        'description': 'For EVERY applicable parameter, each required guideword (Step 6a).',
                     },
                     'operatingModes': {**_STRS, 'description': 'C&E modes this node covers.'},
                     'utilitiesAsSafeguards': {**_STRS, 'description': 'Utilities entering the node, reviewed as loss of utility (G5).'},
@@ -108,8 +118,8 @@ NODE_BUILD_SCHEMA = {
                     'unverified': {**_STRS, 'description': 'Every value in this node marked UNVERIFIED, with what it is.'},
                 },
                 'required': ['localId', 'name', 'processIds', 'entityIds', 'boundaryFrom', 'boundaryTo', 'equipmentTags',
-                             'designIntent', 'designConditions', 'controlLoops', 'interlockRefs', 'reliefDevices', 'protection',
-                             'keyDeviations', 'operatingModes', 'utilitiesAsSafeguards', 'typicalOf', 'differencesFromTypical',
+                             'designIntent', 'designConditions', 'controlLoops', 'interlockRefs', 'reliefDevices', 'parameters',
+                             'vacuumProtection', 'keyDeviations', 'operatingModes', 'utilitiesAsSafeguards', 'typicalOf', 'differencesFromTypical',
                              'revisedScope', 'justification', 'unverified'],
                 'additionalProperties': False,
             },

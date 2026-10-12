@@ -4,16 +4,11 @@
   "type": "module",
   "version": "0.0.0",
   "scripts": {
-    "dev": "node --watch src/index.js",
-    "start": "node src/index.js",
     "test": "node test/merge.test.mjs && node test/classify.test.mjs && node test/cluster.test.mjs && node test/consolidate.test.mjs",
     "pipeline": "node src/pipeline/cli.js"
   },
   "dependencies": {
     "@napi-rs/canvas": "^0.1.100",
-    "cors": "^2.8.5",
-    "dotenv": "^16.4.5",
-    "express": "^4.19.2",
     "openai": "^7.15.0",
     "pdfjs-dist": "^4.3.136"
   }

@@ -22,7 +22,7 @@ def test_upload_runs_the_whole_graph_and_returns_the_consolidated_document(jobs_
     assert response.status_code == 200
     stream = events(response)
     assert any(e['type'] == 'progress' for e in stream)
-    assert [e['step'] for e in stream if e['type'] == 'step'] == ['step1', 'step2', 'sheet', 'step3', 'consolidate']
+    assert [e['step'] for e in stream if e['type'] == 'step'] == ['step1', 'network', 'step2', 'sheet', 'step3', 'consolidate']
     result = stream[-1]
     assert result['type'] == 'result'
     assert result['jobId'] == 'pid-sample-8c299cdeb0b7'

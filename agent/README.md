@@ -37,7 +37,7 @@ spends money.
 
 ```bash
 uv sync
-cp .env.example .env            # or rely on ../server/.env
+cp .env.example .env            # then set OPENAI_API_KEY
 uv run hazop-agent run drawing.pdf
 uv run hazop-agent run <jobId> --max-nodes 9       # add or retarget consolidation
 uv run hazop-agent run <jobId> --replay            # re-apply deterministic rules, no model calls
@@ -70,6 +70,14 @@ opening the same drawing again reuses its cached steps.
 
 `langgraph.json` is included, so `langgraph dev` opens the graph in LangGraph Studio.
 
+## Tracing
+
+Set `LANGSMITH_TRACING=true` and `LANGSMITH_API_KEY` in `.env` (optionally
+`LANGSMITH_PROJECT`) to send traces to LangSmith. Each graph run becomes one
+trace, with a run per step node and the OpenAI calls nested under it (the
+client in `pipeline/llm.py` is wrapped with `wrap_openai`). Traces include the
+rendered drawing images, so they can be large.
+
 ## How each step node decides what to do
 
 Every step keeps the JS pipeline's split: a paid **collect** half that
@@ -92,7 +100,7 @@ State carries references and summaries, never the artifacts themselves.
 
 ## Relation to the JS pipeline
 
-Both pipelines use the same job directory (`server/.jobs/<jobId>/`), the same
+Both pipelines use the same job directory (`data/jobs/<jobId>/` at the repo root), the same
 content-hash job id, and the same step 1 and step 2 artifacts. The agent
 reuses a drawing's step 1 and 2 from either side.
 

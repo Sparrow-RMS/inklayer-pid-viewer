@@ -181,3 +181,10 @@ def format_text_items(items, to_tile_bbox):
         rotated = f" rot={item['angle']}deg" if item.get('angle', 0) != 0 else ''
         lines.append(f"{item['id']} @{b['x']:.2f},{b['y']:.2f} {json.dumps(item['str'], ensure_ascii=False)}{rotated}")
     return '\n'.join(lines)
+
+
+# The legend reference rides along with the tile instructions (the same text
+# on every tile, so it is cached by the API after the first call).
+from ..nomenclature import prompt_section  # noqa: E402
+
+TILE_SYSTEM_PROMPT += prompt_section()

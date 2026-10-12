@@ -14,10 +14,11 @@ export interface NodeMergeMenuProps {
   sourceLabel: string
   targets: MergeTarget[]
   onSelect: (target: MergeTarget) => void
+  onOpenWorksheet: () => void
   onClose: () => void
 }
 
-export default function NodeMergeMenu({ x, y, sourceLabel, targets, onSelect, onClose }: NodeMergeMenuProps) {
+export default function NodeMergeMenu({ x, y, sourceLabel, targets, onSelect, onOpenWorksheet, onClose }: NodeMergeMenuProps) {
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -37,10 +38,13 @@ export default function NodeMergeMenu({ x, y, sourceLabel, targets, onSelect, on
 
   // Keep the menu on-screen near the click point rather than off the edge.
   const clampedLeft = Math.min(x, window.innerWidth - 260)
-  const clampedTop = Math.min(y, window.innerHeight - 40 - targets.length * 36)
+  const clampedTop = Math.min(y, window.innerHeight - 80 - targets.length * 36)
 
   return (
     <div ref={ref} className="node-merge-menu" style={{ left: clampedLeft, top: clampedTop }}>
+      <button className="node-merge-menu-item node-merge-menu-worksheet" onClick={onOpenWorksheet}>
+        <span className="node-merge-menu-label">Open HAZOP worksheet for {sourceLabel}</span>
+      </button>
       <div className="node-merge-menu-header">Merge {sourceLabel} into…</div>
       {targets.length === 0 ? (
         <div className="node-merge-menu-empty">No other nodes to merge into yet.</div>

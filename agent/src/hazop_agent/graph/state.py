@@ -13,12 +13,12 @@ it will snapshot these documents after every node.
 import operator
 from typing import Annotated, Literal, TypedDict
 
-StepName = Literal['step1', 'step2', 'sheet', 'step3', 'consolidate']
+StepName = Literal['step1', 'network', 'step2', 'sheet', 'step3', 'consolidate']
 
 # Pipeline order. `force_from` and staleness both key off this.
 # `sheet` (C&E table + revised scope) needs only step 1, but runs after step 2
 # so adding it to an existing job doesn't make step 2 look stale.
-STEPS: tuple[StepName, ...] = ('step1', 'step2', 'sheet', 'step3', 'consolidate')
+STEPS: tuple[StepName, ...] = ('step1', 'network', 'step2', 'sheet', 'step3', 'consolidate')
 
 
 def merge_dicts(left: dict | None, right: dict | None) -> dict:
@@ -46,6 +46,10 @@ class HazopInput(TypedDict, total=False):
 
 class HazopState(HazopInput, total=False):
     file_name: str
+    # The study package's documents the pipeline reads (pipeline/documents.py),
+    # and whether they changed since this job last ran: then step 2 onward recompute.
+    documents: list
+    documents_changed: bool
     # Set once any step actually changed its output. Every step after it must
     # recompute: its cached artifact was built from inputs that no longer exist.
     upstream_changed: bool
@@ -59,6 +63,8 @@ class HazopState(HazopInput, total=False):
     failure: str | None
     # Each step's output, handed to the next node as its input.
     step1: dict
+    # Pipes traced from the PDF's drawn geometry (no model): spans, pipes, links.
+    network: dict
     step2: dict
     sheet: dict
     step3: dict

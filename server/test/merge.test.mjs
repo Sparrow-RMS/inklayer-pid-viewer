@@ -1,6 +1,7 @@
 import {
   normalizeSighting, mergeSightings, findCompositeTags,
   releaseForeignCompositeTags, attachUnclaimedTags, synthesizeUnclaimedTags,
+  qualifyLocalRefs, localizeConnections,
 } from '../src/pipeline/step1/extract.js'
 
 const tile = (id, x, y, w = 0.4, h = 0.6) => ({ id, page: 0, row: 0, col: 0, region: { x, y, width: w, height: h } })
@@ -219,6 +220,33 @@ const bubbleById = new Map(bubbleText.map((t) => [t.id, t]))
   ]
   const m = mergeSightings(s, 0, textById)
   check('an unrelated category pair does NOT merge even when close', m.length === 2, `got ${m.length}`)
+}
+
+// --- tile-local connection ids resolve within their own tile
+// The model names untagged neighbours by tile-local ids ("v1"), and every tile
+// reuses the same ids.
+{
+  const tileResults = [
+    { tile: tileA, entities: [
+      raw({ localId: 'e1', bbox: { x: 0.05, y: 0.1, width: 0.1, height: 0.1 }, connectsTo: ['v1', 'v2'] }),
+      raw({ localId: 'v1', category: 'valve', bbox: { x: 0.3, y: 0.1, width: 0.05, height: 0.05 }, connectsTo: ['e1', 'P-101A'] }),
+      raw({ localId: 'v2', category: 'valve', bbox: null }), // dropped: no usable box
+    ] },
+    { tile: tileC, entities: [
+      raw({ localId: 'e1', bbox: { x: 0.5, y: 0.7, width: 0.1, height: 0.1 }, connectsTo: ['v1'] }),
+      raw({ localId: 'v1', category: 'valve', bbox: { x: 0.2, y: 0.7, width: 0.05, height: 0.05 }, connectsTo: ['e1'] }),
+    ] },
+  ]
+  const s = tileResults.flatMap((r) => r.entities.map((e, i) => normalizeSighting(e, r.tile, textById, i)).filter(Boolean))
+  qualifyLocalRefs(s, tileResults)
+  const owner = new Map()
+  const m = mergeSightings(s, 0, textById, owner)
+  localizeConnections(m, owner)
+  const at = (t, localId) => owner.get(s.find((x) => x.tileId === t.id && x.localId === localId).uid)
+  const byId = new Map(m.map((e) => [e.id, e]))
+  const [pumpA, valveA, pumpC, valveC] = [at(tileA, 'e1'), at(tileA, 'v1'), at(tileC, 'e1'), at(tileC, 'v1')]
+  check('local ids resolve to their own tile\'s item', JSON.stringify(byId.get(pumpA).connectsTo) === JSON.stringify([valveA]) && JSON.stringify(byId.get(pumpC).connectsTo) === JSON.stringify([valveC]), JSON.stringify(byId.get(pumpA).connectsTo))
+  check('tags pass through; ids of dropped sightings are removed', JSON.stringify(byId.get(valveA).connectsTo) === JSON.stringify([pumpA, 'P-101A']), JSON.stringify(byId.get(valveA).connectsTo))
 }
 
 console.log(`\n${pass} passed, ${fail} failed`)

@@ -118,8 +118,13 @@ def format_entity_inventory(entities):
     for e in entities:
         b = e['bbox']
         center = f"{b['x'] + b['width'] / 2:.3f},{b['y'] + b['height'] / 2:.3f}"
-        tag = f' "{e["tag"]}"' if e.get('tag') else ''
+        tag = f' "{e["tag"]}"{describe(e)}' if e.get('tag') else ''
         attrs = ' '.join(f"{a['key']}={a['value']}" for a in e['attributes'][:4])
         conn = f" connectsTo=[{','.join(e['connectsTo'])}]" if e['connectsTo'] else ''
         lines.append(f"{e['id']} [{e['category']}]{tag} @{center} — {e['type']}{' (' + attrs + ')' if attrs else ''}{conn}")
     return '\n'.join(lines)
+
+
+from ..nomenclature import describe, prompt_section  # noqa: E402
+
+PROCESS_SYSTEM_PROMPT += prompt_section()

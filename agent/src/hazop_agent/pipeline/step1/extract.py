@@ -249,7 +249,13 @@ def assemble_page(collected):
     # merge rule 1 treats a shared anchor as proof two sightings are the same
     # entity — and a stolen anchor would then fuse two different ones.
     stripped_anchors = enforce_anchor_exclusivity(sightings, text_by_id)
-    entities = merge_sightings(sightings, page_index, text_by_id)
+    # Tile-local ids ("v3") only mean something inside their own tile, and
+    # every tile reuses them, so they are pinned to the sighting they name
+    # BEFORE merging pools connectsTo across tiles.
+    qualify_local_refs(sightings, tile_results)
+    owner = {}
+    entities = merge_sightings(sightings, page_index, text_by_id, owner)
+    localize_connections(entities, owner)
 
     # Split bubble tags ("FT" over "202") are reassembled first, so the two
     # passes that follow can recognise them as the single tags they are.
@@ -348,7 +354,7 @@ def normalize_sighting(raw, tile, text_by_id, index):
     }
 
 
-def merge_sightings(sightings, page_index, text_by_id):
+def merge_sightings(sightings, page_index, text_by_id, owner=None):
     """Collapses the duplicate sightings the overlapping tiles produce.
 
     Three independent signals are unioned, strongest first:
@@ -359,6 +365,8 @@ def merge_sightings(sightings, page_index, text_by_id):
       3. same category, different tiles, boxes substantially overlapping.
     Lines are exempt from the distance check on rule 2: one line number names
     one line, however far its run stretches across the sheet.
+
+    `owner`, when given, is filled with sighting uid -> merged entity id.
     """
     dsu = DisjointSet()
     for s in sightings:
@@ -417,7 +425,11 @@ def merge_sightings(sightings, page_index, text_by_id):
             continue
         abbrev = CATEGORY_ABBREV.get(group[0]['category'], 'x')
         counters[abbrev] = counters.get(abbrev, 0) + 1
-        entities.append(_combine_group(group, f'p{page_index}-{abbrev}-{counters[abbrev]}', page_index, text_by_id))
+        entity_id = f'p{page_index}-{abbrev}-{counters[abbrev]}'
+        if owner is not None:
+            for s in group:
+                owner[s['uid']] = entity_id
+        entities.append(_combine_group(group, entity_id, page_index, text_by_id))
     entities.sort(key=sort_key_top_left)
     return entities
 
@@ -733,10 +745,42 @@ def _merge_attributes(ranked):
     return [{'key': k, 'value': v} for k, v in out.items()]
 
 
+def qualify_local_refs(sightings, tile_results):
+    """Rewrites each sighting's tile-local `connectsTo` ids to the uid of the
+    sighting they name in that same tile. A local id whose sighting was
+    dropped is removed: outside its tile it names nothing. Tags pass through."""
+    uid_by_local = {}
+    for s in sightings:
+        uid_by_local.setdefault((s['tileId'], str(s['localId'])), s['uid'])
+    known_local = {
+        r['tile']['id']: {str(e['localId']) for e in r['entities'] if e.get('localId') is not None}
+        for r in tile_results
+    }
+    for s in sightings:
+        refs = []
+        for ref in s['connectsTo']:
+            uid = uid_by_local.get((s['tileId'], ref))
+            if uid:
+                if uid != s['uid']:
+                    refs.append(uid)
+            elif ref not in known_local.get(s['tileId'], ()):
+                refs.append(ref)
+        s['connectsTo'] = refs
+
+
+def localize_connections(entities, owner):
+    """Maps the sighting uids `qualify_local_refs` left in `connectsTo` to the
+    entity each sighting merged into, so every reference is a tag or an entity id."""
+    for e in entities:
+        refs = (owner.get(c, c) for c in e['connectsTo'])
+        e['connectsTo'] = list(dict.fromkeys(c for c in refs if c != e['id']))
+
+
 def _resolve_connections(entities):
-    """Turns the model's free-text `connectsTo` (tags, or tile-local ids) into
-    real entity ids where they can be matched. Unresolvable references are
-    left in `connectsTo` for step 2 to reason about rather than discarded."""
+    """Turns `connectsTo` (tags, or entity ids from resolved tile-local ids)
+    into real entity ids where they can be matched. Unresolvable references
+    are left in `connectsTo` for step 2 to reason about rather than discarded."""
+    ids = {e['id'] for e in entities}
     by_tag = {}
     for e in entities:
         norm = normalize_tag(e.get('tag'))
@@ -745,7 +789,7 @@ def _resolve_connections(entities):
     for entity in entities:
         resolved = []
         for ref in entity['connectsTo']:
-            target = by_tag.get(normalize_tag(ref))
+            target = ref if ref in ids else by_tag.get(normalize_tag(ref))
             if target and target != entity['id'] and target not in resolved:
                 resolved.append(target)
         entity['resolvedConnections'] = resolved

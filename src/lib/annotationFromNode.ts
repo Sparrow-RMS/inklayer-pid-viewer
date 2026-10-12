@@ -116,6 +116,7 @@ function buildPathGroup(
   points: { x: number; y: number }[],
   color: string,
   review: NodeReviewState,
+  arrow = true,
 ) {
   const group = new Konva.Group({ draggable: false, name: SHAPE_GROUP_NAME, id })
   group.add(
@@ -125,8 +126,9 @@ function buildPathGroup(
       fill: color,
       strokeWidth: PATH_STROKE_WIDTH,
       dash: review === 'pending' ? PENDING_DASH : undefined,
-      pointerLength: 12,
-      pointerWidth: 12,
+      // No arrowhead where the flow direction isn't known: a wrong arrow is worse than none.
+      pointerLength: arrow ? 12 : 0,
+      pointerWidth: arrow ? 12 : 0,
       lineCap: 'round',
       lineJoin: 'round',
       hitStrokeWidth: 20,
@@ -153,8 +155,9 @@ function routeAnnotation(
   review: NodeReviewState,
   meta: Annotation['meta'],
   hazopNode: Record<string, unknown>,
+  arrow = true,
 ): Annotation {
-  const konvaGroup = buildPathGroup(id, points, color, review)
+  const konvaGroup = buildPathGroup(id, points, color, review, arrow)
   const serialized = konvaGroup.toJSON()
   const clientRect = Konva.Node.create(serialized).getClientRect()
 
@@ -166,7 +169,7 @@ function routeAnnotation(
       geometry: { type: 'path', points, closed: false },
       coordinateSystem: 'pdf-user-space',
     },
-    payload: { kind: 'line', arrowStart: false, arrowEnd: true },
+    payload: { kind: 'line', arrowStart: false, arrowEnd: arrow },
     appearance: { strokeColor: color, strokeWidth: PATH_STROKE_WIDTH, opacity: OPACITY },
     meta,
     extensions: { konva: { serialized, clientRect }, hazopNode },
@@ -239,8 +242,8 @@ export function nodeToAnnotation(
 
 /**
  * Same idea as `nodeToAnnotation`, but for a node produced by the
- * step1→2→3 pipeline (`server/src/pipeline`) rather than the single-shot
- * analyze endpoint. The key difference: a clustered HAZOP node can span many
+ * agent's pipeline (agent/, a step3 document) rather than a single shape.
+ * The key difference: a clustered HAZOP node can span many
  * lines — step 3 unions its member processes' traced routes, and a
  * consolidated node (e.g. "the whole ST-V305 train") can carry dozens — so
  * one node maps to an ARRAY of annotations here, not one. They share a
@@ -277,7 +280,9 @@ export function hazopNodeToAnnotations(
     return node.routes.map((route, i) => {
       const id = `${idPrefix}-r${i}`
       const points = route.points.map((p) => ({ x: p.x * pageDims.width, y: p.y * pageDims.height }))
-      return routeAnnotation(id, node.pageIndex, points, color, review, meta, { ...hazopNode, entityId: route.entityId })
+      // Traced routes say whether their direction is known; the model's own
+      // routes are always drawn upstream-first.
+      return routeAnnotation(id, node.pageIndex, points, color, review, meta, { ...hazopNode, entityId: route.entityId }, route.flow ?? true)
     })
   }
 

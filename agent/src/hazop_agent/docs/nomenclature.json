@@ -1,0 +1,3115 @@
+{
+  "source": {
+    "file": "Nomenclature.pdf",
+    "titleBlock": [],
+    "note": "Generic legend from another project (Kanech POL storage terminal). A drawing's own legend sheet takes precedence over it."
+  },
+  "sections": {
+    "Line Legend": {
+      "kind": "symbols",
+      "box": [
+        181,
+        101,
+        392,
+        215
+      ],
+      "image": "nomenclature/line-legend.png",
+      "entries": [
+        {
+          "label": "Process Line",
+          "x": 248.2,
+          "y": 125.9
+        },
+        {
+          "label": "Utility Line",
+          "x": 248.2,
+          "y": 150.2
+        },
+        {
+          "label": "Future or Existing Line",
+          "x": 248.2,
+          "y": 168.0
+        },
+        {
+          "label": "Jacketed Line",
+          "x": 248.2,
+          "y": 198.6
+        }
+      ]
+    },
+    "Instrument Line Legend": {
+      "kind": "symbols",
+      "box": [
+        181,
+        218,
+        392,
+        435
+      ],
+      "image": "nomenclature/instrument-line-legend.png",
+      "entries": [
+        {
+          "label": "Instrument Connection Line",
+          "x": 248.2,
+          "y": 247.1
+        },
+        {
+          "label": "Pneumatic Signal Line",
+          "x": 248.2,
+          "y": 271.4
+        },
+        {
+          "label": "Electrical Signal Line",
+          "x": 248.2,
+          "y": 295.6
+        },
+        {
+          "label": "Hydraulic Signal",
+          "x": 248.2,
+          "y": 319.7
+        },
+        {
+          "label": "Capillary Tubing",
+          "x": 248.2,
+          "y": 344.0
+        },
+        {
+          "label": "Electromagnetic, Sonic, Optical or Nuclear Signal",
+          "x": 248.2,
+          "y": 362.8
+        },
+        {
+          "label": "Data Link or Software",
+          "x": 248.2,
+          "y": 392.4
+        },
+        {
+          "label": "Mechanical Link",
+          "x": 248.2,
+          "y": 416.7
+        }
+      ]
+    },
+    "Service Fluid Designation": {
+      "kind": "codes",
+      "box": [
+        181,
+        436,
+        392,
+        1413
+      ],
+      "image": "nomenclature/service-fluid-designation.png",
+      "entries": [
+        {
+          "code": "AV",
+          "meaning": "Atmospheric Vent",
+          "y": 462.9,
+          "x": 234.0,
+          "group": "Service Fluid Designation"
+        },
+        {
+          "code": "BA",
+          "meaning": "Breathing Air",
+          "y": 473.5,
+          "x": 234.0,
+          "group": "Service Fluid Designation"
+        },
+        {
+          "code": "BD",
+          "meaning": "Blowdown",
+          "y": 486.0,
+          "x": 234.0,
+          "group": "Service Fluid Designation"
+        },
+        {
+          "code": "BFW",
+          "meaning": "Boiler Feed Water",
+          "y": 498.3,
+          "x": 234.0,
+          "group": "Service Fluid Designation"
+        },
+        {
+          "code": "CA",
+          "meaning": "Compressed Air",
+          "y": 508.3,
+          "x": 234.0,
+          "group": "Service Fluid Designation"
+        },
+        {
+          "code": "CC",
+          "meaning": "Contaminable Condensate",
+          "y": 520.7,
+          "x": 234.0,
+          "group": "Service Fluid Designation"
+        },
+        {
+          "code": "CHBR",
+          "meaning": "Chilled Brine Return",
+          "y": 532.0,
+          "x": 234.0,
+          "group": "Service Fluid Designation"
+        },
+        {
+          "code": "CHBS",
+          "meaning": "Chilled Brine Supply",
+          "y": 543.6,
+          "x": 234.0,
+          "group": "Service Fluid Designation"
+        },
+        {
+          "code": "CHWR",
+          "meaning": "Chilled Water Return",
+          "y": 555.3,
+          "x": 234.0,
+          "group": "Service Fluid Designation"
+        },
+        {
+          "code": "CHWS",
+          "meaning": "Chilled Water Supply",
+          "y": 566.7,
+          "x": 234.0,
+          "group": "Service Fluid Designation"
+        },
+        {
+          "code": "CON",
+          "meaning": "Condensate",
+          "y": 576.3,
+          "x": 234.0,
+          "group": "Service Fluid Designation"
+        },
+        {
+          "code": "CWR",
+          "meaning": "Cooling Water Return",
+          "y": 588.1,
+          "x": 234.0,
+          "group": "Service Fluid Designation"
+        },
+        {
+          "code": "CWS",
+          "meaning": "Cooling Water Supply",
+          "y": 600.5,
+          "x": 234.0,
+          "group": "Service Fluid Designation"
+        },
+        {
+          "code": "CSA",
+          "meaning": "Concentric Sulphuric Acid",
+          "y": 612.0,
+          "x": 234.0,
+          "group": "Service Fluid Designation"
+        },
+        {
+          "code": "DMW",
+          "meaning": "Demineral Water",
+          "y": 623.7,
+          "x": 234.0,
+          "group": "Service Fluid Designation"
+        },
+        {
+          "code": "DR",
+          "meaning": "Drain",
+          "y": 635.3,
+          "x": 234.0,
+          "group": "Service Fluid Designation"
+        },
+        {
+          "code": "DS",
+          "meaning": "Dilution Steam",
+          "y": 646.8,
+          "x": 234.0,
+          "group": "Service Fluid Designation"
+        },
+        {
+          "code": "DW",
+          "meaning": "Drinking Water",
+          "y": 658.5,
+          "x": 234.0,
+          "group": "Service Fluid Designation"
+        },
+        {
+          "code": "DSA",
+          "meaning": "Dilute Sulphuric Acid",
+          "y": 669.4,
+          "x": 234.0,
+          "group": "Service Fluid Designation"
+        },
+        {
+          "code": "EF",
+          "meaning": "Effluent",
+          "y": 682.5,
+          "x": 234.0,
+          "group": "Service Fluid Designation"
+        },
+        {
+          "code": "ER",
+          "meaning": "Ethylene Refrigerant",
+          "y": 691.5,
+          "x": 234.0,
+          "group": "Service Fluid Designation"
+        },
+        {
+          "code": "ETH",
+          "meaning": "Ethanol",
+          "y": 703.6,
+          "x": 234.0,
+          "group": "Service Fluid Designation"
+        },
+        {
+          "code": "FLW",
+          "meaning": "Filter Water",
+          "y": 715.2,
+          "x": 234.0,
+          "group": "Service Fluid Designation"
+        },
+        {
+          "code": "FG",
+          "meaning": "Fuel Gas",
+          "y": 726.9,
+          "x": 234.0,
+          "group": "Service Fluid Designation"
+        },
+        {
+          "code": "FO",
+          "meaning": "Fuel Oil",
+          "y": 738.5,
+          "x": 234.0,
+          "group": "Service Fluid Designation"
+        },
+        {
+          "code": "FW",
+          "meaning": "Fire Water",
+          "y": 749.3,
+          "x": 234.0,
+          "group": "Service Fluid Designation"
+        },
+        {
+          "code": "HOS",
+          "meaning": "Hot Oil Supply",
+          "y": 761.0,
+          "x": 234.0,
+          "group": "Service Fluid Designation"
+        },
+        {
+          "code": "HOR",
+          "meaning": "Hot Oil Return",
+          "y": 772.6,
+          "x": 234.0,
+          "group": "Service Fluid Designation"
+        },
+        {
+          "code": "H2S",
+          "meaning": "Hydrogen Sulphide",
+          "y": 818.0,
+          "x": 234.0,
+          "group": "Service Fluid Designation"
+        },
+        {
+          "code": "HPC",
+          "meaning": "High Pressure Condensate",
+          "y": 829.6,
+          "x": 234.0,
+          "group": "Service Fluid Designation"
+        },
+        {
+          "code": "HWS",
+          "meaning": "Hot Water Supply",
+          "y": 863.8,
+          "x": 234.0,
+          "group": "Service Fluid Designation"
+        },
+        {
+          "code": "HWR",
+          "meaning": "Hot Water Return",
+          "y": 877.6,
+          "x": 234.0,
+          "group": "Service Fluid Designation"
+        },
+        {
+          "code": "IA",
+          "meaning": "Instrument Air",
+          "y": 887.2,
+          "x": 234.0,
+          "group": "Service Fluid Designation"
+        },
+        {
+          "code": "LDO",
+          "meaning": "Light Diesel Oil",
+          "y": 898.1,
+          "x": 234.0,
+          "group": "Service Fluid Designation"
+        },
+        {
+          "code": "LNG",
+          "meaning": "Liquified Natural Gas",
+          "y": 909.8,
+          "x": 234.0,
+          "group": "Service Fluid Designation"
+        },
+        {
+          "code": "LO",
+          "meaning": "Lube Oil",
+          "y": 921.4,
+          "x": 234.0,
+          "group": "Service Fluid Designation"
+        },
+        {
+          "code": "LPG",
+          "meaning": "Liquified Petroleum Gas",
+          "y": 933.6,
+          "x": 234.0,
+          "group": "Service Fluid Designation"
+        },
+        {
+          "code": "LPC",
+          "meaning": "Low Pressure Condensate",
+          "y": 944.8,
+          "x": 234.0,
+          "group": "Service Fluid Designation"
+        },
+        {
+          "code": "LPS",
+          "meaning": "Low Pressure Steam",
+          "y": 956.4,
+          "x": 234.0,
+          "group": "Service Fluid Designation"
+        },
+        {
+          "code": "MDT",
+          "meaning": "MS Additive",
+          "y": 968.6,
+          "x": 234.0,
+          "group": "Service Fluid Designation"
+        },
+        {
+          "code": "ME",
+          "meaning": "Methanol",
+          "y": 979.7,
+          "x": 234.0,
+          "group": "Service Fluid Designation"
+        },
+        {
+          "code": "MR",
+          "meaning": "Mixed Refrigerant",
+          "y": 990.5,
+          "x": 234.0,
+          "group": "Service Fluid Designation"
+        },
+        {
+          "code": "MPC",
+          "meaning": "Medium Pressure Condensate",
+          "y": 1001.9,
+          "x": 234.0,
+          "group": "Service Fluid Designation"
+        },
+        {
+          "code": "MPS",
+          "meaning": "Medium Pressure Steam",
+          "y": 1013.6,
+          "x": 234.0,
+          "group": "Service Fluid Designation"
+        },
+        {
+          "code": "N2",
+          "meaning": "Nitrogen",
+          "y": 1038.0,
+          "x": 234.0,
+          "group": "Service Fluid Designation"
+        },
+        {
+          "code": "NH",
+          "meaning": "Ammonia",
+          "y": 1070.9,
+          "x": 234.0,
+          "group": "Service Fluid Designation"
+        },
+        {
+          "code": "OWS",
+          "meaning": "Oil Water Sewer",
+          "y": 1082.6,
+          "x": 234.0,
+          "group": "Service Fluid Designation"
+        },
+        {
+          "code": "OX",
+          "meaning": "Oxygen",
+          "y": 1094.2,
+          "x": 234.0,
+          "group": "Service Fluid Designation"
+        },
+        {
+          "code": "PA",
+          "meaning": "Plant Air",
+          "y": 1106.6,
+          "x": 234.0,
+          "group": "Service Fluid Designation"
+        },
+        {
+          "code": "PR",
+          "meaning": "Process Fluid",
+          "y": 1117.5,
+          "x": 234.0,
+          "group": "Service Fluid Designation"
+        },
+        {
+          "code": "PW",
+          "meaning": "Process Water",
+          "y": 1129.1,
+          "x": 234.0,
+          "group": "Service Fluid Designation"
+        },
+        {
+          "code": "PUW",
+          "meaning": "Purified Water",
+          "y": 1151.9,
+          "x": 234.0,
+          "group": "Service Fluid Designation"
+        },
+        {
+          "code": "RO",
+          "meaning": "Reveres Osmosis",
+          "y": 1163.6,
+          "x": 234.0,
+          "group": "Service Fluid Designation"
+        },
+        {
+          "code": "RW",
+          "meaning": "Raw Water",
+          "y": 1174.8,
+          "x": 234.0,
+          "group": "Service Fluid Designation"
+        },
+        {
+          "code": "RV",
+          "meaning": "Relief Vent",
+          "y": 1186.5,
+          "x": 234.0,
+          "group": "Service Fluid Designation"
+        },
+        {
+          "code": "SHS",
+          "meaning": "Super Heated Steam",
+          "y": 1198.1,
+          "x": 234.0,
+          "group": "Service Fluid Designation"
+        },
+        {
+          "code": "SLP",
+          "meaning": "Slope Oil",
+          "y": 1210.1,
+          "x": 234.0,
+          "group": "Service Fluid Designation"
+        },
+        {
+          "code": "SO",
+          "meaning": "Seal Oil",
+          "y": 1220.2,
+          "x": 234.0,
+          "group": "Service Fluid Designation"
+        },
+        {
+          "code": "SS",
+          "meaning": "Sanitary Sewer",
+          "y": 1231.8,
+          "x": 234.0,
+          "group": "Service Fluid Designation"
+        },
+        {
+          "code": "STS",
+          "meaning": "Storm Sewer",
+          "y": 1243.8,
+          "x": 234.0,
+          "group": "Service Fluid Designation"
+        },
+        {
+          "code": "SW",
+          "meaning": "Soft Water",
+          "y": 1255.2,
+          "x": 234.0,
+          "group": "Service Fluid Designation"
+        },
+        {
+          "code": "SWD",
+          "meaning": "Sea Water Supply",
+          "y": 1278.5,
+          "x": 234.0,
+          "group": "Service Fluid Designation"
+        },
+        {
+          "code": "SWS",
+          "meaning": "Storm Water Drain",
+          "y": 1290.6,
+          "x": 234.0,
+          "group": "Service Fluid Designation"
+        },
+        {
+          "code": "THF",
+          "meaning": "Thermic fluid",
+          "y": 1301.4,
+          "x": 234.0,
+          "group": "Service Fluid Designation"
+        },
+        {
+          "code": "TWR",
+          "meaning": "Tempered Water Return",
+          "y": 1313.7,
+          "x": 234.0,
+          "group": "Service Fluid Designation"
+        },
+        {
+          "code": "TWS",
+          "meaning": "Tempered Water Supply",
+          "y": 1326.8,
+          "x": 234.0,
+          "group": "Service Fluid Designation"
+        },
+        {
+          "code": "TW",
+          "meaning": "Treated Water",
+          "y": 1338.3,
+          "x": 234.0,
+          "group": "Service Fluid Designation"
+        },
+        {
+          "code": "V",
+          "meaning": "Vent",
+          "y": 1348.0,
+          "x": 234.0,
+          "group": "Service Fluid Designation"
+        },
+        {
+          "code": "VC",
+          "meaning": "Vacuum Condensate",
+          "y": 1359.6,
+          "x": 234.0,
+          "group": "Service Fluid Designation"
+        },
+        {
+          "code": "VE",
+          "meaning": "Vacuum Exhaust",
+          "y": 1371.3,
+          "x": 234.0,
+          "group": "Service Fluid Designation"
+        },
+        {
+          "code": "WS",
+          "meaning": "Service Water",
+          "y": 1381.4,
+          "x": 234.0,
+          "group": "Service Fluid Designation"
+        },
+        {
+          "code": "WW",
+          "meaning": "Waste Water",
+          "y": 1392.2,
+          "x": 234.0,
+          "group": "Service Fluid Designation"
+        }
+      ]
+    },
+    "Valves": {
+      "kind": "symbols",
+      "box": [
+        393,
+        95,
+        556,
+        471
+      ],
+      "image": "nomenclature/valves.png",
+      "entries": [
+        {
+          "label": "Gate Valve (GV)",
+          "x": 449.2,
+          "y": 125.9
+        },
+        {
+          "label": "Check Valve (CH)",
+          "x": 449.2,
+          "y": 150.2
+        },
+        {
+          "label": "Stop Check Valve (SCH)",
+          "x": 449.2,
+          "y": 168.8
+        },
+        {
+          "label": "Globe Valve (GLV)",
+          "x": 449.2,
+          "y": 198.6
+        },
+        {
+          "label": "Butterfly Valve (BF)",
+          "x": 449.2,
+          "y": 222.9
+        },
+        {
+          "label": "Needle Valve (NV)",
+          "x": 449.2,
+          "y": 247.1
+        },
+        {
+          "label": "Ball Valve (BV)",
+          "x": 449.2,
+          "y": 271.4
+        },
+        {
+          "label": "Generic Rotary 1/4 Turn (GR)",
+          "x": 449.2,
+          "y": 289.6
+        },
+        {
+          "label": "Plug Valve (PL)",
+          "x": 449.2,
+          "y": 319.7
+        },
+        {
+          "label": "Diaphragm Valve (DV)",
+          "x": 449.2,
+          "y": 344.0
+        },
+        {
+          "label": "Three Way",
+          "x": 449.2,
+          "y": 368.2
+        },
+        {
+          "label": "Three Way Valve",
+          "x": 449.2,
+          "y": 368.2
+        },
+        {
+          "label": "Four Way Valve",
+          "x": 449.2,
+          "y": 392.4
+        },
+        {
+          "label": "Pinch Valve (PV)",
+          "x": 449.2,
+          "y": 416.7
+        },
+        {
+          "label": "Angle Valve",
+          "x": 449.2,
+          "y": 440.9
+        },
+        {
+          "label": "Knife Valve (KV)",
+          "x": 449.2,
+          "y": 465.2
+        }
+      ]
+    },
+    "Piping Specialty Items": {
+      "kind": "symbols",
+      "box": [
+        393,
+        483,
+        556,
+        1413
+      ],
+      "image": "nomenclature/piping-specialty-items.png",
+      "entries": [
+        {
+          "label": "X X X X X",
+          "x": 411.9,
+          "y": 902.9
+        },
+        {
+          "label": "X X X X X",
+          "x": 421.8,
+          "y": 906.5
+        },
+        {
+          "label": "Y-Type Strainer",
+          "x": 449.2,
+          "y": 513.6
+        },
+        {
+          "label": "Cone Type Strainer",
+          "x": 449.2,
+          "y": 537.9
+        },
+        {
+          "label": "T-Type Strainer",
+          "x": 449.2,
+          "y": 562.1
+        },
+        {
+          "label": "Duplex Strainer",
+          "x": 449.2,
+          "y": 586.4
+        },
+        {
+          "label": "Basket Strainer",
+          "x": 449.2,
+          "y": 610.5
+        },
+        {
+          "label": "Temporary Strainer",
+          "x": 449.2,
+          "y": 634.7
+        },
+        {
+          "label": "Filter",
+          "x": 449.2,
+          "y": 659.0
+        },
+        {
+          "label": "Detonation Arrestor",
+          "x": 449.2,
+          "y": 683.2
+        },
+        {
+          "label": "Flame Arrestor",
+          "x": 449.2,
+          "y": 707.4
+        },
+        {
+          "label": "Steam Trap Assembly",
+          "x": 449.2,
+          "y": 731.7
+        },
+        {
+          "label": "Ejector / Eductor",
+          "x": 449.2,
+          "y": 755.9
+        },
+        {
+          "label": "Pulsation Dampener",
+          "x": 449.2,
+          "y": 780.2
+        },
+        {
+          "label": "In-Line Silencer",
+          "x": 449.2,
+          "y": 804.4
+        },
+        {
+          "label": "In-Line Silencer",
+          "x": 449.2,
+          "y": 828.6
+        },
+        {
+          "label": "Removable Spool",
+          "x": 449.2,
+          "y": 852.9
+        },
+        {
+          "label": "Desuperheater",
+          "x": 449.2,
+          "y": 877.0
+        },
+        {
+          "label": "Flexible Hose",
+          "x": 449.2,
+          "y": 901.2
+        },
+        {
+          "label": "Expansion Joint",
+          "x": 449.2,
+          "y": 925.5
+        },
+        {
+          "label": "Damper",
+          "x": 449.2,
+          "y": 949.7
+        },
+        {
+          "label": "Breather",
+          "x": 449.2,
+          "y": 974.0
+        },
+        {
+          "label": "Vent Cover",
+          "x": 449.2,
+          "y": 998.2
+        },
+        {
+          "label": "In-Line Mixer",
+          "x": 449.2,
+          "y": 1022.4
+        },
+        {
+          "label": "Diverter Valve",
+          "x": 449.2,
+          "y": 1046.7
+        },
+        {
+          "label": "Rotary Valve",
+          "x": 449.2,
+          "y": 1070.9
+        },
+        {
+          "label": "Excess Flow Valve",
+          "x": 449.2,
+          "y": 1095.2
+        },
+        {
+          "label": "Exhaust Head",
+          "x": 449.2,
+          "y": 1119.4
+        },
+        {
+          "label": "Sight Glass(SG)",
+          "x": 449.2,
+          "y": 1138.7
+        },
+        {
+          "label": "(Double Window)",
+          "x": 449.2,
+          "y": 1148.7
+        },
+        {
+          "label": "Sight Glass(SG) (Tubular)",
+          "x": 449.2,
+          "y": 1163.0
+        },
+        {
+          "label": "Silica Gel(SGL)",
+          "x": 449.2,
+          "y": 1192.0
+        }
+      ]
+    },
+    "Piping Fittings": {
+      "kind": "symbols",
+      "box": [
+        557,
+        95,
+        751,
+        435
+      ],
+      "image": "nomenclature/piping-fittings.png",
+      "entries": [
+        {
+          "label": "Flange",
+          "x": 614.0,
+          "y": 125.9
+        },
+        {
+          "label": "Welded Connection",
+          "x": 614.0,
+          "y": 150.2
+        },
+        {
+          "label": "Cap",
+          "x": 614.0,
+          "y": 174.4
+        },
+        {
+          "label": "Reducer (Concentric)",
+          "x": 614.0,
+          "y": 198.6
+        },
+        {
+          "label": "Reducer (Eccentric)",
+          "x": 614.0,
+          "y": 222.9
+        },
+        {
+          "label": "Hose Connection",
+          "x": 614.0,
+          "y": 247.1
+        },
+        {
+          "label": "Spacer",
+          "x": 614.0,
+          "y": 271.4
+        },
+        {
+          "label": "Blank",
+          "x": 614.0,
+          "y": 295.6
+        },
+        {
+          "label": "Spectacle Blind (Normally Open) Spectacle Blind (Normally Close)",
+          "x": 614.0,
+          "y": 316.7
+        },
+        {
+          "label": "Plug",
+          "x": 614.0,
+          "y": 368.2
+        },
+        {
+          "label": "Blind Flange",
+          "x": 614.0,
+          "y": 392.4
+        },
+        {
+          "label": "Load Cell",
+          "x": 614.0,
+          "y": 416.7
+        }
+      ]
+    },
+    "Primary Element Symbol (Flow)": {
+      "kind": "symbols",
+      "box": [
+        557,
+        436,
+        751,
+        1085
+      ],
+      "image": "nomenclature/primary-element-symbol-flow.png",
+      "entries": [
+        {
+          "label": "FS*",
+          "x": 579.2,
+          "y": 973.3
+        },
+        {
+          "label": "xxxx",
+          "x": 593.0,
+          "y": 509.8
+        },
+        {
+          "label": "xxxx",
+          "x": 593.0,
+          "y": 572.4
+        },
+        {
+          "label": "Flow Conditioning Devices (e.g.. Straightening Vanes)",
+          "x": 608.9,
+          "y": 1018.9
+        },
+        {
+          "label": "General Symbol In-Line Element XX=FE, FT.etc",
+          "x": 611.8,
+          "y": 460.1
+        },
+        {
+          "label": "In-Line Flow Element",
+          "x": 611.8,
+          "y": 487.0
+        },
+        {
+          "label": "with Integral Transmitter xxxx=Mass, Coriolis, Thermal, Int. Orifice...",
+          "x": 611.8,
+          "y": 496.6
+        },
+        {
+          "label": "In-Line Flow Element",
+          "x": 611.8,
+          "y": 534.4
+        },
+        {
+          "label": "with Separate Transmitter xxxx=Mass, Coriolis,",
+          "x": 611.8,
+          "y": 544.4
+        },
+        {
+          "label": "Thermal...",
+          "x": 611.8,
+          "y": 564.9
+        },
+        {
+          "label": "Orifice",
+          "x": 611.8,
+          "y": 586.4
+        },
+        {
+          "label": "Magnetic Meter",
+          "x": 611.8,
+          "y": 610.5
+        },
+        {
+          "label": "Turbine or Propeller",
+          "x": 611.8,
+          "y": 634.7
+        },
+        {
+          "label": "Ultrasonic",
+          "x": 611.8,
+          "y": 659.0
+        },
+        {
+          "label": "Vertex",
+          "x": 611.8,
+          "y": 683.2
+        },
+        {
+          "label": "Pitot tube",
+          "x": 611.8,
+          "y": 707.4
+        },
+        {
+          "label": "Averaging Pitot tube",
+          "x": 611.8,
+          "y": 731.7
+        },
+        {
+          "label": "Flow Nozzle",
+          "x": 611.8,
+          "y": 755.9
+        },
+        {
+          "label": "Venturi",
+          "x": 611.8,
+          "y": 780.2
+        },
+        {
+          "label": "Wedge Meter",
+          "x": 611.8,
+          "y": 804.4
+        },
+        {
+          "label": "Flume",
+          "x": 611.8,
+          "y": 828.6
+        },
+        {
+          "label": "Weir",
+          "x": 611.8,
+          "y": 852.9
+        },
+        {
+          "label": "Positive Displacement",
+          "x": 611.8,
+          "y": 877.0
+        },
+        {
+          "label": "Orifice in Quick",
+          "x": 611.8,
+          "y": 896.3
+        },
+        {
+          "label": "Change Fitting",
+          "x": 611.8,
+          "y": 906.0
+        },
+        {
+          "label": "Target",
+          "x": 611.8,
+          "y": 925.5
+        },
+        {
+          "label": "Rotameter (or Purge) (show with Optional Integral Valve)",
+          "x": 611.8,
+          "y": 945.9
+        },
+        {
+          "label": "Flow Switch * = H/L",
+          "x": 611.8,
+          "y": 969.9
+        },
+        {
+          "label": "Flow Glass",
+          "x": 611.8,
+          "y": 998.2
+        },
+        {
+          "label": "Restriction Orifice",
+          "x": 611.8,
+          "y": 1058.2
+        }
+      ]
+    },
+    "Self-Actuated Devices": {
+      "kind": "symbols",
+      "box": [
+        557,
+        1087,
+        751,
+        1431
+      ],
+      "image": "nomenclature/self-actuated-devices.png",
+      "entries": [
+        {
+          "label": "Rupture Disc or Safety Head for Pressure Relief (Explosion Panel)",
+          "x": 614.0,
+          "y": 1116.6
+        },
+        {
+          "label": "Rupture Disc or Safety Head for Vacuum Relief (Explosion Panel)",
+          "x": 614.0,
+          "y": 1140.5
+        },
+        {
+          "label": "Pressure Relief or",
+          "x": 611.8,
+          "y": 1162.7
+        },
+        {
+          "label": "Safety Valve",
+          "x": 611.8,
+          "y": 1172.8
+        },
+        {
+          "label": "Vacuum Relief Valve",
+          "x": 611.8,
+          "y": 1192.0
+        },
+        {
+          "label": "Pr. & Vacuum Relief Valve or Conservation Vent",
+          "x": 611.8,
+          "y": 1211.2
+        },
+        {
+          "label": "Pilot Oper.Relief Valve with Remote Sensor ( use Appropriate Relief Valve Symbol )",
+          "x": 614.0,
+          "y": 1237.1
+        },
+        {
+          "label": "Pressure Reducing Regulator (Self Contained) Back Pressure Regulator ( Self Contained ) Pressure Reducing Regu. (W/ External Tap) Back Pressure Regu.",
+          "x": 614.0,
+          "y": 1284.2
+        },
+        {
+          "label": "(W/ External Tap)",
+          "x": 614.0,
+          "y": 1366.8
+        },
+        {
+          "label": "Differential Pressure Reducing Regulator Temperature Regulator",
+          "x": 614.0,
+          "y": 1381.0
+        },
+        {
+          "label": "Filled System Type",
+          "x": 614.0,
+          "y": 1415.2
+        }
+      ]
+    },
+    "Control Valve Actuator Symbols": {
+      "kind": "symbols",
+      "box": [
+        751,
+        95,
+        980,
+        525
+      ],
+      "image": "nomenclature/control-valve-actuator-symbols.png",
+      "entries": [
+        {
+          "label": "E/H",
+          "x": 785.7,
+          "y": 270.2
+        },
+        {
+          "label": "Manual Operator",
+          "x": 817.5,
+          "y": 127.0
+        },
+        {
+          "label": "Diaphragm",
+          "x": 817.5,
+          "y": 149.8
+        },
+        {
+          "label": "Pressure Balanced Diaphragm",
+          "x": 817.5,
+          "y": 174.0
+        },
+        {
+          "label": "Handwheel - Used with any Actuator",
+          "x": 817.5,
+          "y": 193.8
+        },
+        {
+          "label": "Cylinder, Piston",
+          "x": 817.5,
+          "y": 222.6
+        },
+        {
+          "label": "Motor Operated",
+          "x": 817.5,
+          "y": 247.0
+        },
+        {
+          "label": "Electro - Hydraulic",
+          "x": 817.5,
+          "y": 271.2
+        },
+        {
+          "label": "Single Solenoid",
+          "x": 817.5,
+          "y": 295.5
+        },
+        {
+          "label": "Single Solenoid with Remote Reset",
+          "x": 817.5,
+          "y": 314.4
+        },
+        {
+          "label": "Single Solenoid with Manual Reset",
+          "x": 817.5,
+          "y": 340.8
+        },
+        {
+          "label": "Typical Control Valve",
+          "x": 817.5,
+          "y": 373.2
+        },
+        {
+          "label": "with Positioner and Solenoid",
+          "x": 817.5,
+          "y": 387.6
+        },
+        {
+          "label": "Goose Neck",
+          "x": 817.5,
+          "y": 429.2
+        }
+      ]
+    },
+    "Instruments Identification": {
+      "kind": "codes",
+      "box": [
+        769,
+        530,
+        924,
+        1061
+      ],
+      "image": "nomenclature/instruments-identification.png",
+      "entries": [
+        {
+          "code": "PA",
+          "meaning": "Pressure Alarm",
+          "y": 569.7,
+          "x": 800.7,
+          "group": "Pressure"
+        },
+        {
+          "code": "PCV",
+          "meaning": "Pressure Control Valve",
+          "y": 581.2,
+          "x": 800.7,
+          "group": "Pressure"
+        },
+        {
+          "code": "PE",
+          "meaning": "Pressure Element",
+          "y": 592.8,
+          "x": 800.7,
+          "group": "Pressure"
+        },
+        {
+          "code": "PG",
+          "meaning": "Pressure Gauge",
+          "y": 604.5,
+          "x": 800.7,
+          "group": "Pressure"
+        },
+        {
+          "code": "PI",
+          "meaning": "Pressure Indicator",
+          "y": 616.1,
+          "x": 800.7,
+          "group": "Pressure"
+        },
+        {
+          "code": "PIC",
+          "meaning": "Pressure Indicating Controller",
+          "y": 627.8,
+          "x": 800.7,
+          "group": "Pressure"
+        },
+        {
+          "code": "PS",
+          "meaning": "Pressure Switch",
+          "y": 639.4,
+          "x": 800.7,
+          "group": "Pressure"
+        },
+        {
+          "code": "PT",
+          "meaning": "Pressure Transmeter",
+          "y": 651.0,
+          "x": 800.7,
+          "group": "Pressure"
+        },
+        {
+          "code": "PRC",
+          "meaning": "Pressure Recorder And Controller",
+          "y": 662.7,
+          "x": 800.7,
+          "group": "Pressure"
+        },
+        {
+          "code": "DPI",
+          "meaning": "Differential Pressure Indicator",
+          "y": 674.3,
+          "x": 800.7,
+          "group": "Pressure"
+        },
+        {
+          "code": "DPS",
+          "meaning": "Differential Pressure Switch",
+          "y": 686.0,
+          "x": 800.7,
+          "group": "Pressure"
+        },
+        {
+          "code": "TA",
+          "meaning": "Temperature Alarm",
+          "y": 717.4,
+          "x": 800.7,
+          "group": "Temperature"
+        },
+        {
+          "code": "TCV",
+          "meaning": "Temperature Control Valve",
+          "y": 729.0,
+          "x": 800.7,
+          "group": "Temperature"
+        },
+        {
+          "code": "TE",
+          "meaning": "Temperature Element",
+          "y": 740.6,
+          "x": 800.7,
+          "group": "Temperature"
+        },
+        {
+          "code": "TG",
+          "meaning": "Temperature Gauge",
+          "y": 752.2,
+          "x": 800.7,
+          "group": "Temperature"
+        },
+        {
+          "code": "TI",
+          "meaning": "Temperature Indicator",
+          "y": 763.8,
+          "x": 800.7,
+          "group": "Temperature"
+        },
+        {
+          "code": "TIC",
+          "meaning": "Temperature Indicating Controller",
+          "y": 775.5,
+          "x": 800.7,
+          "group": "Temperature"
+        },
+        {
+          "code": "TS",
+          "meaning": "Temperature Switch",
+          "y": 787.1,
+          "x": 800.7,
+          "group": "Temperature"
+        },
+        {
+          "code": "TT",
+          "meaning": "Temperature Transmeter",
+          "y": 798.8,
+          "x": 800.7,
+          "group": "Temperature"
+        },
+        {
+          "code": "TRC",
+          "meaning": "Temperature Recorder & Controller",
+          "y": 810.4,
+          "x": 800.7,
+          "group": "Temperature"
+        },
+        {
+          "code": "FCV",
+          "meaning": "Flow Control Valve",
+          "y": 843.6,
+          "x": 800.7,
+          "group": "Flow"
+        },
+        {
+          "code": "FE",
+          "meaning": "Flow Element",
+          "y": 855.3,
+          "x": 800.7,
+          "group": "Flow"
+        },
+        {
+          "code": "FI",
+          "meaning": "Flow Indicator",
+          "y": 866.9,
+          "x": 800.7,
+          "group": "Flow"
+        },
+        {
+          "code": "FIC",
+          "meaning": "Flow Indicating Controller",
+          "y": 878.6,
+          "x": 800.7,
+          "group": "Flow"
+        },
+        {
+          "code": "FIQ",
+          "meaning": "Flow Indicator and Totaliser",
+          "y": 890.1,
+          "x": 800.7,
+          "group": "Flow"
+        },
+        {
+          "code": "FRC",
+          "meaning": "Flow Recorder And Controller",
+          "y": 901.7,
+          "x": 800.7,
+          "group": "Flow"
+        },
+        {
+          "code": "FS",
+          "meaning": "Flow Switch",
+          "y": 913.4,
+          "x": 800.7,
+          "group": "Flow"
+        },
+        {
+          "code": "FT",
+          "meaning": "Flow Transmeter",
+          "y": 925.0,
+          "x": 800.7,
+          "group": "Flow"
+        },
+        {
+          "code": "FQC",
+          "meaning": "Flow Intergrator And Controller",
+          "y": 936.6,
+          "x": 800.7,
+          "group": "Flow"
+        },
+        {
+          "code": "LA",
+          "meaning": "Level Alarm",
+          "y": 966.5,
+          "x": 800.7,
+          "group": "Level"
+        },
+        {
+          "code": "LCV",
+          "meaning": "Level Control Valve",
+          "y": 978.2,
+          "x": 800.7,
+          "group": "Level"
+        },
+        {
+          "code": "LE",
+          "meaning": "Level Element",
+          "y": 989.8,
+          "x": 800.7,
+          "group": "Level"
+        },
+        {
+          "code": "LG",
+          "meaning": "Level Gauge",
+          "y": 1001.4,
+          "x": 800.7,
+          "group": "Level"
+        },
+        {
+          "code": "LI",
+          "meaning": "Level Indicator",
+          "y": 1013.1,
+          "x": 800.7,
+          "group": "Level"
+        },
+        {
+          "code": "LIC",
+          "meaning": "Level Indicating Controller",
+          "y": 1024.7,
+          "x": 800.7,
+          "group": "Level"
+        },
+        {
+          "code": "LS",
+          "meaning": "Level Switch",
+          "y": 1036.4,
+          "x": 800.7,
+          "group": "Level"
+        },
+        {
+          "code": "LT",
+          "meaning": "Level Transmeter",
+          "y": 1048.0,
+          "x": 800.7,
+          "group": "Level"
+        }
+      ]
+    },
+    "Lines Identification": {
+      "kind": "symbols",
+      "box": [
+        924,
+        1067,
+        1138,
+        1210
+      ],
+      "image": "nomenclature/lines-identification.png",
+      "entries": [
+        {
+          "label": "XX - XXX - XXX - XXX",
+          "x": 950.6,
+          "y": 1096.0
+        },
+        {
+          "label": "Pipe Material Code Line Number Fluid Service Code Line Size (Inch)",
+          "x": 1063.4,
+          "y": 1142.9
+        }
+      ]
+    },
+    "Insulation / Tracing Type": {
+      "kind": "codes",
+      "box": [
+        1138,
+        1065,
+        1368,
+        1210
+      ],
+      "image": "nomenclature/insulation-tracing-type.png",
+      "entries": [
+        {
+          "code": "IH",
+          "meaning": "Insulation Hot",
+          "y": 1091.4,
+          "x": 1201.2,
+          "group": "Insulation/Tracing Type"
+        },
+        {
+          "code": "IC",
+          "meaning": "Insulation Cold",
+          "y": 1103.1,
+          "x": 1201.2,
+          "group": "Insulation/Tracing Type"
+        },
+        {
+          "code": "IP",
+          "meaning": "Insulation for Protection",
+          "y": 1114.7,
+          "x": 1201.2,
+          "group": "Insulation/Tracing Type"
+        },
+        {
+          "code": "IJ",
+          "meaning": "Steam Jacketed",
+          "y": 1126.4,
+          "x": 1201.2,
+          "group": "Insulation/Tracing Type"
+        },
+        {
+          "code": "IE",
+          "meaning": "Electrical Traced",
+          "y": 1138.0,
+          "x": 1201.2,
+          "group": "Insulation/Tracing Type"
+        },
+        {
+          "code": "IT",
+          "meaning": "Steam traced",
+          "y": 1149.6,
+          "x": 1201.2,
+          "group": "Insulation/Tracing Type"
+        },
+        {
+          "code": "CC",
+          "meaning": "Cold Conservation",
+          "y": 1161.2,
+          "x": 1201.2,
+          "group": "Insulation/Tracing Type"
+        },
+        {
+          "code": "3LPE",
+          "meaning": "3 Layer Polyethylene Layer",
+          "y": 1172.1,
+          "x": 1201.2,
+          "group": "Insulation/Tracing Type"
+        },
+        {
+          "code": "ICH",
+          "meaning": "Cold & Hot Insulation",
+          "y": 1184.2,
+          "x": 1201.2,
+          "group": "Insulation/Tracing Type"
+        }
+      ]
+    },
+    "Utility Connector": {
+      "kind": "symbols",
+      "box": [
+        751,
+        1210,
+        924,
+        1431
+      ],
+      "image": "nomenclature/utility-connector.png",
+      "entries": [
+        {
+          "label": "Connector Number",
+          "x": 756.4,
+          "y": 1262.7
+        },
+        {
+          "label": "P&ID No.",
+          "x": 866.8,
+          "y": 1274.1
+        },
+        {
+          "label": "XXXX",
+          "x": 870.9,
+          "y": 1254.9
+        }
+      ]
+    },
+    "Close Drain": {
+      "kind": "symbols",
+      "box": [
+        924,
+        1210,
+        1138,
+        1431
+      ],
+      "image": "nomenclature/close-drain.png",
+      "entries": [
+        {
+          "label": "Connector Number",
+          "x": 934.2,
+          "y": 1265.0
+        },
+        {
+          "label": "Line Service Code",
+          "x": 948.4,
+          "y": 1293.5
+        },
+        {
+          "label": "Line Service Code",
+          "x": 948.4,
+          "y": 1391.6
+        },
+        {
+          "label": "Destination",
+          "x": 965.6,
+          "y": 1284.0
+        },
+        {
+          "label": "Destination",
+          "x": 966.8,
+          "y": 1379.2
+        },
+        {
+          "label": "P&ID No.",
+          "x": 1046.1,
+          "y": 1303.7
+        },
+        {
+          "label": "XXXX",
+          "x": 1050.2,
+          "y": 1266.2
+        },
+        {
+          "label": "YYY",
+          "x": 1053.8,
+          "y": 1285.2
+        },
+        {
+          "label": "YYY",
+          "x": 1053.8,
+          "y": 1380.4
+        }
+      ]
+    },
+    "Open Drain": {
+      "kind": "symbols",
+      "box": [
+        1138,
+        1210,
+        1368,
+        1431
+      ],
+      "image": "nomenclature/open-drain.png",
+      "entries": [
+        {
+          "label": "Connector Number",
+          "x": 1152.6,
+          "y": 1265.0
+        },
+        {
+          "label": "Line Service Code",
+          "x": 1166.8,
+          "y": 1293.5
+        },
+        {
+          "label": "Destination",
+          "x": 1182.9,
+          "y": 1284.0
+        },
+        {
+          "label": "Line Service Code",
+          "x": 1183.5,
+          "y": 1388.7
+        },
+        {
+          "label": "Destination",
+          "x": 1198.2,
+          "y": 1379.2
+        },
+        {
+          "label": "XXXX",
+          "x": 1268.6,
+          "y": 1266.2
+        },
+        {
+          "label": "P&ID No.",
+          "x": 1264.6,
+          "y": 1303.7
+        },
+        {
+          "label": "YYY",
+          "x": 1272.2,
+          "y": 1285.2
+        },
+        {
+          "label": "YYY",
+          "x": 1284.8,
+          "y": 1380.4
+        }
+      ]
+    },
+    "Instrument Location": {
+      "kind": "symbols",
+      "box": [
+        980,
+        95,
+        1368,
+        334
+      ],
+      "image": "nomenclature/instrument-location.png",
+      "entries": [
+        {
+          "label": "Instruments",
+          "x": 990.8,
+          "y": 135.5
+        },
+        {
+          "label": "Discrete",
+          "x": 998.7,
+          "y": 126.5
+        },
+        {
+          "label": "DCS",
+          "x": 1055.1,
+          "y": 130.4
+        },
+        {
+          "label": "PLC",
+          "x": 1100.3,
+          "y": 130.4
+        },
+        {
+          "label": "Hardware Interlock",
+          "x": 1131.5,
+          "y": 135.5
+        },
+        {
+          "label": "Discrete",
+          "x": 1155.5,
+          "y": 126.5
+        },
+        {
+          "label": "Field or Locally Mounted",
+          "x": 1208.4,
+          "y": 157.7
+        },
+        {
+          "label": "Primary Location Normally",
+          "x": 1208.4,
+          "y": 186.6
+        },
+        {
+          "label": "Accessible to an Operator",
+          "x": 1208.4,
+          "y": 202.6
+        },
+        {
+          "label": "Primary Location Normally Inaccessible to an Operator (Central or Main Control Room)",
+          "x": 1208.4,
+          "y": 223.0
+        },
+        {
+          "label": "Auxiliary Location Normally Accessible to an Operator (Secondary or Local Control Room)",
+          "x": 1208.4,
+          "y": 262.0
+        },
+        {
+          "label": "Auxiliary Location Normally Inaccessible to an Operator (Secondary or Local Control Room)",
+          "x": 1208.4,
+          "y": 302.0
+        }
+      ]
+    },
+    "Abbreviation (General)": {
+      "kind": "codes",
+      "box": [
+        980,
+        340,
+        1368,
+        1061
+      ],
+      "image": "nomenclature/abbreviation-general.png",
+      "entries": [
+        {
+          "code": "AG",
+          "meaning": "Above Ground",
+          "y": 372.8,
+          "x": 1035.5,
+          "group": "Abbreviation (General)"
+        },
+        {
+          "code": "A/M",
+          "meaning": "Auto/Manual",
+          "y": 384.3,
+          "x": 1035.5,
+          "group": "Abbreviation (General)"
+        },
+        {
+          "code": "ATM",
+          "meaning": "Atmosphere",
+          "y": 394.5,
+          "x": 1035.5,
+          "group": "Abbreviation (General)"
+        },
+        {
+          "code": "BL",
+          "meaning": "Battery Limit",
+          "y": 406.1,
+          "x": 1035.5,
+          "group": "Abbreviation (General)"
+        },
+        {
+          "code": "BTL",
+          "meaning": "Bottom Tangent Line",
+          "y": 417.8,
+          "x": 1035.5,
+          "group": "Abbreviation (General)"
+        },
+        {
+          "code": "BYP",
+          "meaning": "Bypass",
+          "y": 429.4,
+          "x": 1035.5,
+          "group": "Abbreviation (General)"
+        },
+        {
+          "code": "CC",
+          "meaning": "Chemical Cleanout",
+          "y": 441.0,
+          "x": 1035.5,
+          "group": "Abbreviation (General)"
+        },
+        {
+          "code": "CL",
+          "meaning": "Centerline",
+          "y": 452.7,
+          "x": 1035.5,
+          "group": "Abbreviation (General)"
+        },
+        {
+          "code": "CO",
+          "meaning": "Cleanout",
+          "y": 464.3,
+          "x": 1035.5,
+          "group": "Abbreviation (General)"
+        },
+        {
+          "code": "CONN",
+          "meaning": "Connection",
+          "y": 476.0,
+          "x": 1035.5,
+          "group": "Abbreviation (General)"
+        },
+        {
+          "code": "CSC",
+          "meaning": "Car Seal Close",
+          "y": 486.9,
+          "x": 1035.5,
+          "group": "Abbreviation (General)"
+        },
+        {
+          "code": "CSO",
+          "meaning": "Car Seal Open",
+          "y": 498.4,
+          "x": 1035.5,
+          "group": "Abbreviation (General)"
+        },
+        {
+          "code": "CTR",
+          "meaning": "Center",
+          "y": 510.0,
+          "x": 1035.5,
+          "group": "Abbreviation (General)"
+        },
+        {
+          "code": "DCS",
+          "meaning": "Distribution Control Sys.",
+          "y": 521.7,
+          "x": 1035.5,
+          "group": "Abbreviation (General)"
+        },
+        {
+          "code": "DES",
+          "meaning": "Design",
+          "y": 533.3,
+          "x": 1035.5,
+          "group": "Abbreviation (General)"
+        },
+        {
+          "code": "DIA",
+          "meaning": "Diameter",
+          "y": 545.0,
+          "x": 1035.5,
+          "group": "Abbreviation (General)"
+        },
+        {
+          "code": "DP",
+          "meaning": "Design Pressure",
+          "y": 556.6,
+          "x": 1035.5,
+          "group": "Abbreviation (General)"
+        },
+        {
+          "code": "D/P",
+          "meaning": "Differential Pressure",
+          "y": 568.2,
+          "x": 1035.5,
+          "group": "Abbreviation (General)"
+        },
+        {
+          "code": "DRN",
+          "meaning": "Drain",
+          "y": 579.9,
+          "x": 1035.5,
+          "group": "Abbreviation (General)"
+        },
+        {
+          "code": "DT",
+          "meaning": "Design Temperature",
+          "y": 591.5,
+          "x": 1035.5,
+          "group": "Abbreviation (General)"
+        },
+        {
+          "code": "DWG",
+          "meaning": "Drawing",
+          "y": 603.2,
+          "x": 1035.5,
+          "group": "Abbreviation (General)"
+        },
+        {
+          "code": "(E)",
+          "meaning": "Existing",
+          "y": 614.8,
+          "x": 1035.5,
+          "group": "Abbreviation (General)"
+        },
+        {
+          "code": "EXT",
+          "meaning": "External",
+          "y": 626.9,
+          "x": 1035.5,
+          "group": "Abbreviation (General)"
+        },
+        {
+          "code": "EL",
+          "meaning": "Elevation",
+          "y": 638.6,
+          "x": 1035.5,
+          "group": "Abbreviation (General)"
+        },
+        {
+          "code": "ESD",
+          "meaning": "Emergency Shoutdown",
+          "y": 650.1,
+          "x": 1035.5,
+          "group": "Abbreviation (General)"
+        },
+        {
+          "code": "FA",
+          "meaning": "Flame Arrestor",
+          "y": 662.2,
+          "x": 1035.5,
+          "group": "Abbreviation (General)"
+        },
+        {
+          "code": "FOF",
+          "meaning": "Face of Flange",
+          "y": 673.8,
+          "x": 1035.5,
+          "group": "Abbreviation (General)"
+        },
+        {
+          "code": "(F)",
+          "meaning": "Furnished",
+          "y": 685.5,
+          "x": 1035.5,
+          "group": "Abbreviation (General)"
+        },
+        {
+          "code": "FC",
+          "meaning": "Fail Closed",
+          "y": 697.1,
+          "x": 1035.5,
+          "group": "Abbreviation (General)"
+        },
+        {
+          "code": "FI",
+          "meaning": "Fail Indeterminate",
+          "y": 708.0,
+          "x": 1035.5,
+          "group": "Abbreviation (General)"
+        },
+        {
+          "code": "FL",
+          "meaning": "Fail Lock (last Position)",
+          "y": 719.7,
+          "x": 1035.5,
+          "group": "Abbreviation (General)"
+        },
+        {
+          "code": "FLG",
+          "meaning": "Flange",
+          "y": 731.3,
+          "x": 1035.5,
+          "group": "Abbreviation (General)"
+        },
+        {
+          "code": "FO",
+          "meaning": "Fail Open",
+          "y": 743.0,
+          "x": 1035.5,
+          "group": "Abbreviation (General)"
+        },
+        {
+          "code": "FP",
+          "meaning": "Full Port",
+          "y": 754.6,
+          "x": 1035.5,
+          "group": "Abbreviation (General)"
+        },
+        {
+          "code": "FV",
+          "meaning": "Full Vacuum",
+          "y": 766.2,
+          "x": 1035.5,
+          "group": "Abbreviation (General)"
+        },
+        {
+          "code": "GD",
+          "meaning": "Gas Detector",
+          "y": 778.4,
+          "x": 1035.5,
+          "group": "Abbreviation (General)"
+        },
+        {
+          "code": "GO",
+          "meaning": "Gear Operated",
+          "y": 790.0,
+          "x": 1035.5,
+          "group": "Abbreviation (General)"
+        },
+        {
+          "code": "GR",
+          "meaning": "Grade",
+          "y": 801.5,
+          "x": 1035.5,
+          "group": "Abbreviation (General)"
+        },
+        {
+          "code": "HC",
+          "meaning": "Hose Connection",
+          "y": 813.2,
+          "x": 1035.5,
+          "group": "Abbreviation (General)"
+        },
+        {
+          "code": "HDR",
+          "meaning": "Header",
+          "y": 824.8,
+          "x": 1035.5,
+          "group": "Abbreviation (General)"
+        },
+        {
+          "code": "HH",
+          "meaning": "Hand Hole",
+          "y": 836.4,
+          "x": 1035.5,
+          "group": "Abbreviation (General)"
+        },
+        {
+          "code": "HOA",
+          "meaning": "Hand/Off/Automatic",
+          "y": 848.1,
+          "x": 1035.5,
+          "group": "Abbreviation (General)"
+        },
+        {
+          "code": "HP",
+          "meaning": "High Pressure",
+          "y": 859.7,
+          "x": 1035.5,
+          "group": "Abbreviation (General)"
+        },
+        {
+          "code": "HPT",
+          "meaning": "High Point",
+          "y": 871.4,
+          "x": 1035.5,
+          "group": "Abbreviation (General)"
+        },
+        {
+          "code": "HS",
+          "meaning": "Hand Switch",
+          "y": 883.5,
+          "x": 1035.5,
+          "group": "Abbreviation (General)"
+        },
+        {
+          "code": "ID",
+          "meaning": "Inside Diameter",
+          "y": 895.6,
+          "x": 1035.5,
+          "group": "Abbreviation (General)"
+        },
+        {
+          "code": "ISBL",
+          "meaning": "Inside Battery Limit",
+          "y": 907.7,
+          "x": 1035.5,
+          "group": "Abbreviation (General)"
+        },
+        {
+          "code": "LC",
+          "meaning": "Lock Close",
+          "y": 919.8,
+          "x": 1035.5,
+          "group": "Abbreviation (General)"
+        },
+        {
+          "code": "LO",
+          "meaning": "Lock Open",
+          "y": 932.0,
+          "x": 1035.5,
+          "group": "Abbreviation (General)"
+        },
+        {
+          "code": "MAX",
+          "meaning": "Maximum",
+          "y": 943.6,
+          "x": 1035.5,
+          "group": "Abbreviation (General)"
+        },
+        {
+          "code": "MIN",
+          "meaning": "Minimum",
+          "y": 954.4,
+          "x": 1035.5,
+          "group": "Abbreviation (General)"
+        },
+        {
+          "code": "FB",
+          "meaning": "Full Bore",
+          "y": 966.5,
+          "x": 1035.5,
+          "group": "Abbreviation (General)"
+        },
+        {
+          "code": "HOV",
+          "meaning": "Hand Operated Valve",
+          "y": 978.6,
+          "x": 1035.5,
+          "group": "Abbreviation (General)"
+        },
+        {
+          "code": "PGS",
+          "meaning": "Pig Signaler",
+          "y": 990.8,
+          "x": 1035.5,
+          "group": "Abbreviation (General)"
+        },
+        {
+          "code": "MOV",
+          "meaning": "Motor Operated Valve",
+          "y": 372.6,
+          "x": 1215.0
+        },
+        {
+          "code": "MTL",
+          "meaning": "Material",
+          "y": 384.3,
+          "x": 1215.0
+        },
+        {
+          "code": "MW",
+          "meaning": "Manway",
+          "y": 395.9,
+          "x": 1215.0
+        },
+        {
+          "code": "NC",
+          "meaning": "Normally Closed",
+          "y": 407.6,
+          "x": 1215.0
+        },
+        {
+          "code": "NNF",
+          "meaning": "Normally No Flow",
+          "y": 419.2,
+          "x": 1215.0
+        },
+        {
+          "code": "NO",
+          "meaning": "Normally Open",
+          "y": 430.8,
+          "x": 1215.0
+        },
+        {
+          "code": "NOZ",
+          "meaning": "Nozzle",
+          "y": 442.5,
+          "x": 1215.0
+        },
+        {
+          "code": "OD",
+          "meaning": "Outside Diameter",
+          "y": 454.1,
+          "x": 1215.0
+        },
+        {
+          "code": "O/C",
+          "meaning": "Open/close",
+          "y": 466.2,
+          "x": 1215.0
+        },
+        {
+          "code": "O/O",
+          "meaning": "On/Off",
+          "y": 477.9,
+          "x": 1215.0
+        },
+        {
+          "code": "OP",
+          "meaning": "Output",
+          "y": 488.8,
+          "x": 1215.0
+        },
+        {
+          "code": "OSBL",
+          "meaning": "Outside Battery Limits",
+          "y": 499.6,
+          "x": 1215.0
+        },
+        {
+          "code": "OVHD",
+          "meaning": "Overhead",
+          "y": 511.2,
+          "x": 1215.0
+        },
+        {
+          "code": "PB",
+          "meaning": "Push Button",
+          "y": 522.9,
+          "x": 1215.0
+        },
+        {
+          "code": "PLC",
+          "meaning": "Programmable Logic Controller",
+          "y": 535.0,
+          "x": 1215.0
+        },
+        {
+          "code": "PRESS",
+          "meaning": "Pressure",
+          "y": 546.6,
+          "x": 1215.0
+        },
+        {
+          "code": "PV",
+          "meaning": "Process Variable",
+          "y": 558.3,
+          "x": 1215.0
+        },
+        {
+          "code": "(R)",
+          "meaning": "Relocated",
+          "y": 569.9,
+          "x": 1215.0
+        },
+        {
+          "code": "REQD",
+          "meaning": "Required",
+          "y": 581.6,
+          "x": 1215.0
+        },
+        {
+          "code": "RTD",
+          "meaning": "Resistance Temp. Detector",
+          "y": 593.2,
+          "x": 1215.0
+        },
+        {
+          "code": "ROV",
+          "meaning": "Restriction Orifice",
+          "y": 605.3,
+          "x": 1215.0
+        },
+        {
+          "code": "SC",
+          "meaning": "Sample Connection",
+          "y": 617.0,
+          "x": 1215.0
+        },
+        {
+          "code": "SCH",
+          "meaning": "Schedule",
+          "y": 628.6,
+          "x": 1215.0
+        },
+        {
+          "code": "SD",
+          "meaning": "Shoutdown",
+          "y": 640.2,
+          "x": 1215.0
+        },
+        {
+          "code": "SC",
+          "meaning": "Specific Gravity",
+          "y": 651.8,
+          "x": 1215.0
+        },
+        {
+          "code": "SIS",
+          "meaning": "Safety Instrumented System",
+          "y": 663.4,
+          "x": 1215.0
+        },
+        {
+          "code": "SO",
+          "meaning": "Steam Out",
+          "y": 674.3,
+          "x": 1215.0
+        },
+        {
+          "code": "SOV",
+          "meaning": "Solenoid Operated Valve",
+          "y": 686.4,
+          "x": 1215.0
+        },
+        {
+          "code": "SP",
+          "meaning": "Sample Point",
+          "y": 697.4,
+          "x": 1215.0
+        },
+        {
+          "code": "SS",
+          "meaning": "Stainless Steel",
+          "y": 709.0,
+          "x": 1215.0
+        },
+        {
+          "code": "S/S",
+          "meaning": "Start/Stop",
+          "y": 720.6,
+          "x": 1215.0
+        },
+        {
+          "code": "STR",
+          "meaning": "Strainer",
+          "y": 732.8,
+          "x": 1215.0
+        },
+        {
+          "code": "STD",
+          "meaning": "Standard",
+          "y": 744.4,
+          "x": 1215.0
+        },
+        {
+          "code": "T/C",
+          "meaning": "Thermocouple",
+          "y": 756.0,
+          "x": 1215.0
+        },
+        {
+          "code": "TDH",
+          "meaning": "Total Differential Head",
+          "y": 767.7,
+          "x": 1215.0
+        },
+        {
+          "code": "TEMP",
+          "meaning": "Temperature",
+          "y": 779.3,
+          "x": 1215.0
+        },
+        {
+          "code": "THRD",
+          "meaning": "Threaded",
+          "y": 790.8,
+          "x": 1215.0
+        },
+        {
+          "code": "TL",
+          "meaning": "Tangent Line",
+          "y": 802.5,
+          "x": 1215.0
+        },
+        {
+          "code": "TSO",
+          "meaning": "Tight Shout-Off",
+          "y": 814.1,
+          "x": 1215.0
+        },
+        {
+          "code": "T/T",
+          "meaning": "Tangent to Tangent",
+          "y": 825.8,
+          "x": 1215.0
+        },
+        {
+          "code": "TYP",
+          "meaning": "Typical",
+          "y": 837.4,
+          "x": 1215.0
+        },
+        {
+          "code": "TW",
+          "meaning": "Thermowell",
+          "y": 849.5,
+          "x": 1215.0
+        },
+        {
+          "code": "UG",
+          "meaning": "Underground",
+          "y": 861.2,
+          "x": 1215.0
+        },
+        {
+          "code": "VNT",
+          "meaning": "Vent",
+          "y": 872.8,
+          "x": 1215.0
+        },
+        {
+          "code": "VAC",
+          "meaning": "Vacuum",
+          "y": 884.4,
+          "x": 1215.0
+        },
+        {
+          "code": "VB",
+          "meaning": "Vertex Breaker",
+          "y": 896.1,
+          "x": 1215.0
+        },
+        {
+          "code": "VFD",
+          "meaning": "Variable Frequency Drive",
+          "y": 908.2,
+          "x": 1215.0
+        },
+        {
+          "code": "VG",
+          "meaning": "Vacuum Gauge",
+          "y": 920.3,
+          "x": 1215.0
+        },
+        {
+          "code": "WT",
+          "meaning": "Load Cell",
+          "y": 932.0,
+          "x": 1215.0
+        },
+        {
+          "code": "XI",
+          "meaning": "Trip Indicator",
+          "y": 943.5,
+          "x": 1215.0
+        },
+        {
+          "code": "XL",
+          "meaning": "Indication Lamp",
+          "y": 955.6,
+          "x": 1215.0
+        },
+        {
+          "code": "XV",
+          "meaning": "ON/OFF Valve",
+          "y": 967.7,
+          "x": 1215.0
+        },
+        {
+          "code": "XS",
+          "meaning": "Selector Switch",
+          "y": 979.8,
+          "x": 1215.0
+        },
+        {
+          "code": "XSL",
+          "meaning": "Local/Remote Switch",
+          "y": 992.0,
+          "x": 1215.0
+        },
+        {
+          "code": "ZSO/C",
+          "meaning": "Open/close Limit Switch",
+          "y": 1004.1,
+          "x": 1215.0
+        }
+      ]
+    },
+    "Equipment Symbol": {
+      "kind": "symbols",
+      "box": [
+        1368,
+        95,
+        1955,
+        954
+      ],
+      "image": "nomenclature/equipment-symbol.png",
+      "entries": [
+        {
+          "label": "Positive Displacement Blower",
+          "x": 1376.4,
+          "y": 658.4
+        },
+        {
+          "label": "Horizontal Centrifugal Pump",
+          "x": 1379.9,
+          "y": 159.2
+        },
+        {
+          "label": "Positive Displacement Pump",
+          "x": 1378.8,
+          "y": 219.9
+        },
+        {
+          "label": "Liquid Ring Vacuum Pump",
+          "x": 1383.3,
+          "y": 341.3
+        },
+        {
+          "label": "Progressive Cavity Pump",
+          "x": 1386.4,
+          "y": 521.1
+        },
+        {
+          "label": "Reciprocating Compressor",
+          "x": 1383.3,
+          "y": 833.9
+        },
+        {
+          "label": "Centrifugal Sump Pump",
+          "x": 1389.5,
+          "y": 402.0
+        },
+        {
+          "label": "Centrifugal Compressor",
+          "x": 1389.8,
+          "y": 780.0
+        },
+        {
+          "label": "Vertical Inline Pump",
+          "x": 1398.3,
+          "y": 280.6
+        },
+        {
+          "label": "Screw Compressor",
+          "x": 1400.2,
+          "y": 885.2
+        },
+        {
+          "label": "Vertical Can Pump",
+          "x": 1401.2,
+          "y": 469.6
+        },
+        {
+          "label": "Centrifugal Blower",
+          "x": 1401.9,
+          "y": 722.9
+        },
+        {
+          "label": "Electrical Motor",
+          "x": 1408.1,
+          "y": 928.6
+        },
+        {
+          "label": "Screw Pump",
+          "x": 1413.3,
+          "y": 591.2
+        },
+        {
+          "label": "Plate and Frame Exchanger",
+          "x": 1506.2,
+          "y": 781.5
+        },
+        {
+          "label": "Air Cooled Exchanger",
+          "x": 1520.0,
+          "y": 722.9
+        },
+        {
+          "label": "Double Pipe Exchanger",
+          "x": 1516.0,
+          "y": 833.9
+        },
+        {
+          "label": "( Louvers Optional )",
+          "x": 1524.8,
+          "y": 733.1
+        },
+        {
+          "label": "TEMA Type BEM",
+          "x": 1530.2,
+          "y": 341.3
+        },
+        {
+          "label": "TEMA Type BEU",
+          "x": 1530.8,
+          "y": 402.0
+        },
+        {
+          "label": "TEMA Type AEM",
+          "x": 1530.2,
+          "y": 469.6
+        },
+        {
+          "label": "TEMA Type AEL",
+          "x": 1532.6,
+          "y": 521.1
+        },
+        {
+          "label": "TEMA Type NEN",
+          "x": 1530.5,
+          "y": 591.2
+        },
+        {
+          "label": "TEMA Type BKU",
+          "x": 1530.8,
+          "y": 658.4
+        },
+        {
+          "label": "Spiral Exchanger",
+          "x": 1530.6,
+          "y": 885.2
+        },
+        {
+          "label": "Turbine Driver",
+          "x": 1538.2,
+          "y": 159.2
+        },
+        {
+          "label": "Agitator / Mixer",
+          "x": 1536.2,
+          "y": 280.6
+        },
+        {
+          "label": "Diesel Engine",
+          "x": 1539.0,
+          "y": 219.9
+        },
+        {
+          "label": "Internal Floating Roof Tank",
+          "x": 1628.2,
+          "y": 280.6
+        },
+        {
+          "label": "External Floating Roof Tank",
+          "x": 1626.5,
+          "y": 469.6
+        },
+        {
+          "label": "Horizontal Vessel/Tank",
+          "x": 1637.2,
+          "y": 844.7
+        },
+        {
+          "label": "Vessel/Reactor With",
+          "x": 1643.4,
+          "y": 722.9
+        },
+        {
+          "label": "Dome Roof Tank",
+          "x": 1651.1,
+          "y": 159.2
+        },
+        {
+          "label": "Cone Roof Tank",
+          "x": 1652.4,
+          "y": 341.3
+        },
+        {
+          "label": "Double Wall Tank",
+          "x": 1649.3,
+          "y": 402.0
+        },
+        {
+          "label": "Top Body Flange",
+          "x": 1650.8,
+          "y": 731.6
+        },
+        {
+          "label": "Open Top Tank",
+          "x": 1654.1,
+          "y": 219.9
+        },
+        {
+          "label": "Vertical Vessel/",
+          "x": 1654.5,
+          "y": 790.4
+        },
+        {
+          "label": "Knockout Drum",
+          "x": 1654.5,
+          "y": 799.0
+        },
+        {
+          "label": "Agitated Vessel",
+          "x": 1654.1,
+          "y": 917.7
+        },
+        {
+          "label": "Gas Cylinder",
+          "x": 1660.0,
+          "y": 658.4
+        },
+        {
+          "label": "Furnace",
+          "x": 1670.8,
+          "y": 591.2
+        },
+        {
+          "label": "(Jacketed)",
+          "x": 1665.8,
+          "y": 926.4
+        },
+        {
+          "label": "Sphere",
+          "x": 1673.1,
+          "y": 521.1
+        },
+        {
+          "label": "(General Symbol-PFD)",
+          "x": 1765.2,
+          "y": 468.5
+        },
+        {
+          "label": "(General Symbol-PFD)",
+          "x": 1765.2,
+          "y": 524.0
+        },
+        {
+          "label": "(General Symbol-PFD)",
+          "x": 1765.2,
+          "y": 819.2
+        },
+        {
+          "label": "Pig Launcher & Pig Receiver",
+          "x": 1777.0,
+          "y": 882.4
+        },
+        {
+          "label": "Cooling Tower",
+          "x": 1784.1,
+          "y": 408.6
+        },
+        {
+          "label": "Heat Exchanger",
+          "x": 1780.4,
+          "y": 459.4
+        },
+        {
+          "label": "Metering Pump",
+          "x": 1782.4,
+          "y": 566.6
+        },
+        {
+          "label": "Sparkler Filter",
+          "x": 1785.2,
+          "y": 255.2
+        },
+        {
+          "label": "HDPE Tank",
+          "x": 1790.1,
+          "y": 321.6
+        },
+        {
+          "label": "Nutsche Filter",
+          "x": 1785.5,
+          "y": 705.3
+        },
+        {
+          "label": "Agitated Vessel",
+          "x": 1793.3,
+          "y": 161.8
+        },
+        {
+          "label": "Centrifuge",
+          "x": 1793.4,
+          "y": 628.1
+        },
+        {
+          "label": "(Agitated)",
+          "x": 1794.9,
+          "y": 713.9
+        },
+        {
+          "label": "Fryma Mill",
+          "x": 1793.4,
+          "y": 760.2
+        },
+        {
+          "label": "(Limpeted)",
+          "x": 1800.6,
+          "y": 170.4
+        },
+        {
+          "label": "Blower",
+          "x": 1801.2,
+          "y": 810.4
+        },
+        {
+          "label": "Pump",
+          "x": 1808.1,
+          "y": 517.9
+        },
+        {
+          "label": "Pig Trap",
+          "x": 1803.3,
+          "y": 920.8
+        }
+      ]
+    },
+    "Classification of Equipment": {
+      "kind": "table",
+      "box": [
+        1368,
+        954,
+        1702,
+        1311
+      ],
+      "image": "nomenclature/classification-of-equipment.png",
+      "entries": [
+        {
+          "class": "A",
+          "subject": "Mixing Equipment",
+          "description": "Agitator, Aerator, Mechanical Mixers Centrifugal Blowers, Positive Displacement Blowers, Fans"
+        },
+        {
+          "class": "B",
+          "subject": "Blowers",
+          "description": "Centrifugal Blowers, Positive Centrifugal Blowers, Positive Displacement Blowers, Fans Centrifugal, Reciprocating, Screw, Vacuum"
+        },
+        {
+          "class": "C",
+          "subject": "Compressors",
+          "description": "Centrifugal, Reciprocating, Screw, Vacuum Electric and Pneumatic Motors, Diesel Engines, Steam and Gas Turbines"
+        },
+        {
+          "class": "D",
+          "subject": "Mechanical Drivers",
+          "description": "Electric and Pneumatic Motors, Diesel Engines, Steam and Gas Turbines Unfired Heat Exchangers, Condensers,"
+        },
+        {
+          "class": "E",
+          "subject": "Heat Exchangers",
+          "description": "Unfired Heat Exchangers, Condensers, Coolers, Reboilers, Vaporizers and Heating Coil, Double Pipe, Spiral, Plate & Frame,"
+        },
+        {
+          "class": "F",
+          "subject": "Furnaces",
+          "description": "Fired Heater, Furnaces, Boiler, Kilns Horizontal and Vertical Centrifugal, Positive Displacement, Vertical Canned, Screw,"
+        },
+        {
+          "class": "P",
+          "subject": "Pumps",
+          "description": "Horizontal and Vertical Centrifugal, Positive Displacement, Vertical Canned, Screw, Gear, Sump"
+        },
+        {
+          "class": "R",
+          "subject": "Reactors",
+          "description": ""
+        },
+        {
+          "class": "T",
+          "subject": "Tower / Columns",
+          "description": ""
+        },
+        {
+          "class": "TK",
+          "subject": "Tanks",
+          "description": "API atmospheric and low pressure Filters, Bins, Silos Separators, Driers, Accumulators"
+        },
+        {
+          "class": "U",
+          "subject": "Miscellaneous",
+          "description": "Filters, Bins, Silos Separators, Driers, Accumulators"
+        },
+        {
+          "class": "V",
+          "subject": "Drums",
+          "description": "Separators, Driers, Accumulators"
+        }
+      ]
+    },
+    "Miscellaneous": {
+      "kind": "symbols",
+      "box": [
+        1702,
+        954,
+        1955,
+        1335
+      ],
+      "image": "nomenclature/miscellaneous.png",
+      "entries": [
+        {
+          "label": "SC XX/YY",
+          "x": 1712.4,
+          "y": 1011.9
+        },
+        {
+          "label": "XXXX",
+          "x": 1711.0,
+          "y": 1103.2
+        },
+        {
+          "label": "SP-XXXX",
+          "x": 1711.0,
+          "y": 1168.8
+        },
+        {
+          "label": "P XXXX",
+          "x": 1715.3,
+          "y": 984.0
+        },
+        {
+          "label": "Purge Connection",
+          "x": 1776.6,
+          "y": 980.8
+        },
+        {
+          "label": "(XXXX = Purge Pressure and Medium)",
+          "x": 1776.6,
+          "y": 995.9
+        },
+        {
+          "label": "Sample Connection",
+          "x": 1776.6,
+          "y": 1012.6
+        },
+        {
+          "label": "(XX/YY = Type/Number)",
+          "x": 1776.6,
+          "y": 1027.0
+        },
+        {
+          "label": "Note Reference Symbol",
+          "x": 1776.6,
+          "y": 1042.5
+        },
+        {
+          "label": "(XX = Note Number, Rotate",
+          "x": 1776.6,
+          "y": 1057.8
+        },
+        {
+          "label": "Arrow as Required)",
+          "x": 1776.6,
+          "y": 1073.3
+        },
+        {
+          "label": "Tie-In Symbol",
+          "x": 1776.6,
+          "y": 1088.7
+        },
+        {
+          "label": "(XXXX = Identification Number)",
+          "x": 1776.6,
+          "y": 1104.0
+        },
+        {
+          "label": "Point of Change",
+          "x": 1776.6,
+          "y": 1119.5
+        },
+        {
+          "label": "In Line Class or",
+          "x": 1776.6,
+          "y": 1134.9
+        },
+        {
+          "label": "Insulation Requirement",
+          "x": 1776.6,
+          "y": 1150.4
+        },
+        {
+          "label": "Piping Specialty Item",
+          "x": 1776.6,
+          "y": 1165.7
+        },
+        {
+          "label": "Packaged Equipment Limits",
+          "x": 1776.6,
+          "y": 1183.0
+        },
+        {
+          "label": "Battery Limits (or Match Line)",
+          "x": 1776.6,
+          "y": 1200.5
+        },
+        {
+          "label": "Chemical Seal / Diaphragm",
+          "x": 1776.6,
+          "y": 1218.9
+        },
+        {
+          "label": "Pilot Light or Gauge Illuminator",
+          "x": 1776.6,
+          "y": 1233.5
+        },
+        {
+          "label": "Dual Function or Instruments",
+          "x": 1776.6,
+          "y": 1256.1
+        },
+        {
+          "label": "Sharing Common Housing",
+          "x": 1776.6,
+          "y": 1286.9
+        },
+        {
+          "label": "Interlock",
+          "x": 1776.6,
+          "y": 1315.7
+        }
+      ]
+    },
+    "Primary / Secondary Line / Drain": {
+      "kind": "symbols",
+      "box": [
+        1368,
+        1330,
+        1702,
+        1431
+      ],
+      "image": "nomenclature/primary-secondary-line-drain.png",
+      "entries": [
+        {
+          "label": "Connector Number",
+          "x": 1414.2,
+          "y": 1369.4
+        },
+        {
+          "label": "Service Description",
+          "x": 1531.1,
+          "y": 1356.0
+        },
+        {
+          "label": "Origin / Destination",
+          "x": 1534.4,
+          "y": 1384.4
+        },
+        {
+          "label": "P&ID No.",
+          "x": 1568.4,
+          "y": 1370.4
+        }
+      ]
+    }
+  }
+}

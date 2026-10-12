@@ -16,6 +16,8 @@ rebuilds nodes and the validation report from the cached responses.
 from ..geometry import clamp_bbox, union_bboxes
 from ..jobs import now_iso
 from ..llm import image_part, structured_call, text_part
+from ..documents import format_documents
+from ..network import format_links, node_routes
 from ..pdf import render_region, to_data_url
 from ..step1.extract import normalize_tag
 from . import rules
@@ -31,8 +33,12 @@ async def build_document(doc, step2_result, step1_result, sheet_result, options=
     collected = []
     for page in step2_result['pages']:
         i = page['pageIndex']
-        collected.append(await collect_page(doc[i], page, step1_by_page[i], sheet_by_page[i], options))
-    return {**assemble_document(collected, step2_result['fileName'], step1_result, sheet_result), 'raw': collected}
+        collected.append(await collect_page(doc[i], page, step1_by_page[i], sheet_by_page[i], {**options, 'networkPage': _network_page(options.get('network'), i)}))
+    return {**assemble_document(collected, step2_result['fileName'], step1_result, sheet_result, options.get('network')), 'raw': collected}
+
+
+def _network_page(network_doc, page_index):
+    return next((p for p in (network_doc or {}).get('pages', []) if p['pageIndex'] == page_index), None)
 
 
 def _context(step1_page, sheet_page):
@@ -46,15 +52,22 @@ def _context(step1_page, sheet_page):
     }
 
 
-def _inputs(page, step1_page, sheet_page, ctx):
+def _inputs(page, step1_page, sheet_page, ctx, network_page=None):
     entities, by_id = ctx['entities'], ctx['entity_by_id']
-    return [
+    traced = [text_part('Process links traced exactly from the drawn pipework (no model): equipment / connector to '
+                        'equipment / connector, through valves, with flow direction ("->") where the drawing shows it. '
+                        'A listed link is exact; a pair NOT listed may still be connected (tracing can miss a dense spot), so check the image. '
+                        'A node takes whole lines: every inlet from its connector to the equipment it feeds.\n'
+                        + format_links(network_page, entities))] if network_page else []
+    supporting = format_documents(ctx.get('documents') or [])
+    return [*traced, *([text_part(supporting)] if supporting else []),
         text_part(f"P&ID page index {page['pageIndex']}. {step1_page.get('drawingMeta', {}).get('overallDescription', '')}"),
         text_part('Equipment data blocks:\n' + format_equipment_data(entities)),
         text_part('Processes from the previous step (id [category] "name"):\n' + format_processes(page['processes'], by_id)),
         text_part('C&E / interlock table:\n' + format_interlocks(sheet_page['interlockTable'])),
         text_part('Computed facts:\n' + format_facts(rules.control_loops(entities), rules.relief_devices(entities),
-                                                   rules.connectors(entities), rules.duplicate_trains(entities), by_id)),
+                                                   rules.connectors(entities), rules.duplicate_trains(entities), by_id,
+                                                   rules.pressure_ratings(entities))),
         text_part('C&E consistency findings already computed (V3):\n' + format_findings(sheet_page['findings'])),
         text_part('Entity inventory (id [category] "tag" @x,y — type (attributes) connectsTo=[...]):\n'
                   + format_inventory(entities, ctx['revised_ids'])),
@@ -66,12 +79,12 @@ async def collect_page(pdf_page, page, step1_page, sheet_page, opts=None):
     on_progress = opts.get('onProgress') or (lambda event: None)
     page_px = opts.get('pagePx', 2400)
     page_index = page['pageIndex']
-    ctx = _context(step1_page, sheet_page)
+    ctx = {**_context(step1_page, sheet_page), 'documents': opts.get('documents') or []}
     on_progress({'phase': 'page-start', 'pageIndex': page_index, 'processes': len(page['processes']),
                  'interlocks': len(ctx['interlocks'])})
 
     png = render_region(pdf_page, {'x': 0, 'y': 0, 'width': 1, 'height': 1}, target_px=page_px)['png']
-    inputs = [*_inputs(page, step1_page, sheet_page, ctx), image_part(to_data_url(png))]
+    inputs = [*_inputs(page, step1_page, sheet_page, ctx, opts.get('networkPage')), image_part(to_data_url(png))]
     responses, error, initial_findings = [], None, []
 
     async def call(extra):
@@ -106,6 +119,8 @@ def _expand(response, processes, ctx):
     by_id = ctx['entity_by_id']
     invalid_processes, invalid_entities, out = [], [], []
     for n in response.get('nodes') or []:
+        # Cached responses from before per-parameter protection still replay.
+        n = rules.normalize_hazop_fields(n)
         members = [process_by_id[p] for p in n['processIds'] if p in process_by_id]
         invalid_processes += [p for p in n['processIds'] if p not in process_by_id]
         invalid_entities += [e for e in n['entityIds'] if e not in by_id]
@@ -125,10 +140,11 @@ def _check(response, page, ctx):
     return rules.validate(nodes, ctx['entities'], ctx['interlocks'], ctx['revised_ids'], ctx['modes'], excluded)
 
 
-def assemble_document(collected, file_name, step1_result, sheet_result):
+def assemble_document(collected, file_name, step1_result, sheet_result, network_doc=None):
     step1_by_page = {p['pageIndex']: p for p in step1_result['pages']}
     sheet_by_page = {p['pageIndex']: p for p in sheet_result['pages']}
-    pages = [assemble_page(c, step1_by_page[c['pageIndex']], sheet_by_page[c['pageIndex']]) for c in collected]
+    pages = [assemble_page(c, step1_by_page[c['pageIndex']], sheet_by_page[c['pageIndex']], _network_page(network_doc, c['pageIndex']))
+             for c in collected]
     return {
         'schemaVersion': 2,
         'step': 'step3-nodes',
@@ -145,7 +161,7 @@ def assemble_document(collected, file_name, step1_result, sheet_result):
     }
 
 
-def assemble_page(collected, step1_page, sheet_page):
+def assemble_page(collected, step1_page, sheet_page, network_page=None):
     page_index = collected['pageIndex']
     ctx = _context(step1_page, sheet_page)
     by_id = ctx['entity_by_id']
@@ -163,6 +179,9 @@ def assemble_page(collected, step1_page, sheet_page):
         if e.get('tag'):
             tag_index.setdefault(normalize_tag(e['tag']), e['id'])
 
+    # Whole traced pipes, with direction, where the pipeline traced the sheet;
+    # otherwise the model's own line routes.
+    traced = node_routes(kept, network_page, ctx['entities']) if network_page else {}
     nodes = []
     for n in kept:
         members = [by_id[e] for e in n['entityIds']]
@@ -179,7 +198,7 @@ def assemble_page(collected, step1_page, sheet_page):
             'entityIds': n['entityIds'],
             'primaryEquipmentIds': primary,
             'bbox': clamp_bbox(union_bboxes(e['bbox'] for e in members)),
-            'routes': [{'entityId': e['id'], 'points': pts} for e in members if e['category'] == 'line' and e.get('routes') for pts in e['routes']],
+            'routes': traced.get(n['localId']) or [{'entityId': e['id'], 'points': pts} for e in members if e['category'] == 'line' and e.get('routes') for pts in e['routes']],
             'hazop': {
                 'localId': n['localId'],
                 'name': n['name'],
@@ -191,7 +210,8 @@ def assemble_page(collected, step1_page, sheet_page):
                 'controlLoops': n['controlLoops'],
                 'interlockRefs': n['interlockRefs'],
                 'reliefDevices': n['reliefDevices'],
-                'protection': n['protection'],
+                'parameters': n['parameters'],
+                'vacuumProtection': n['vacuumProtection'],
                 'keyDeviations': n['keyDeviations'],
                 'operatingModes': n['operatingModes'],
                 'utilitiesAsSafeguards': n['utilitiesAsSafeguards'],

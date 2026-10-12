@@ -21,7 +21,8 @@ from pathlib import Path
 
 from langgraph.config import get_stream_writer
 
-from ..pipeline import jobs
+from ..pipeline import documents as study_docs
+from ..pipeline import jobs, network
 from ..pipeline.pdf import load_pdf
 from ..pipeline.step1 import extract as step1
 from ..pipeline.sheet import extract as sheet
@@ -31,6 +32,8 @@ from ..pipeline.step3 import consolidate
 from .state import STEPS, HazopState
 
 _VOLATILE_KEYS = {'generatedAt', 'durationMs'}
+# Steps whose prompts include the study package's documents.
+DOCUMENT_STEPS = ('step2', 'sheet', 'step3')
 
 
 def _stable(doc):
@@ -65,7 +68,8 @@ async def _run_step(state: HazopState, *, step, artifact, compute, replay, summa
     """
     job_id = state['job_id']
     raw_artifact = raw_artifact or f'{artifact}-raw'
-    stale = _forced(state, step) or state.get('upstream_changed', False)
+    stale = _forced(state, step) or state.get('upstream_changed', False) or (
+        step in DOCUMENT_STEPS and state.get('documents_changed', False))
     raw_ok = jobs.has_artifact(job_id, raw_artifact) and (can_replay is None or can_replay())
     have = jobs.has_artifact(job_id, artifact)
     previous = jobs.read_artifact(job_id, artifact) if have else None
@@ -84,7 +88,7 @@ async def _run_step(state: HazopState, *, step, artifact, compute, replay, summa
         result, changed, status = previous, False, 'cached'
     else:
         if not os.environ.get('OPENAI_API_KEY'):
-            return {'failure': f'{step} needs a model call but OPENAI_API_KEY is not set (agent/.env or server/.env)'}
+            return {'failure': f'{step} needs a model call but OPENAI_API_KEY is not set (agent/.env)'}
         started = time.monotonic()
         full = await compute()
         raw = full.pop('raw')
@@ -111,9 +115,21 @@ async def _run_step(state: HazopState, *, step, artifact, compute, replay, summa
 
 # ─────────────────────────────────────────────────────────────────── nodes
 
+def _with_documents(job_id, update):
+    """Loads the study package's documents for this drawing and notes whether
+    they changed since the job last ran (their signature is kept in job.json)."""
+    docs = study_docs.study_documents(job_id)
+    signature = study_docs.signature(docs)
+    previous = jobs.read_manifest(job_id).get('documentsSignature', study_docs.signature([]))
+    jobs.ensure_job(job_id, documentsSignature=signature)
+    return {**update, 'documents': docs, 'documents_changed': signature != previous,
+            'summaries': {'documents': [f"{d['typeName']}: {d['fileName']}" + ('' if d['readable'] else ' (not readable yet)') for d in docs]}}
+
+
 async def ingest(state: HazopState):
     """Resolves the job: hashes a new PDF into its content-addressed job
-    directory, or checks an existing job has what the run needs."""
+    directory, or checks an existing job has what the run needs. Also loads
+    the study package's documents for the drawing."""
     if state.get('pdf_path'):
         path = Path(state['pdf_path']).expanduser()
         if not path.exists():
@@ -122,14 +138,14 @@ async def ingest(state: HazopState):
         job_id = jobs.job_id_for(path.name, data)
         jobs.ensure_job(job_id, fileName=path.name, source=str(path.resolve()))
         jobs.stash_source(job_id, data)
-        return {'job_id': job_id, 'file_name': path.name, 'upstream_changed': False}
+        return _with_documents(job_id, {'job_id': job_id, 'file_name': path.name, 'upstream_changed': False})
 
     job_id = state.get('job_id')
     if not job_id:
         return {'failure': 'pass pdf_path (a PDF) or job_id (an existing job)'}
     if not jobs.job_dir(job_id).exists():
         return {'failure': f'no job {job_id} under {jobs.jobs_root()}'}
-    return {'file_name': jobs.read_manifest(job_id).get('fileName', 'document.pdf'), 'upstream_changed': False}
+    return _with_documents(job_id, {'file_name': jobs.read_manifest(job_id).get('fileName', 'document.pdf'), 'upstream_changed': False})
 
 
 async def extract(state: HazopState):
@@ -172,6 +188,34 @@ async def extract(state: HazopState):
     )
 
 
+async def trace(state: HazopState):
+    """The pipe network, traced from the PDF's drawn geometry. Free and
+    deterministic, so it is simply recomputed whenever it is stale or missing;
+    later steps recompute only if the traced network actually changed."""
+    job_id = state['job_id']
+    artifact = 'step1-network'
+    stale = _forced(state, 'network') or state.get('upstream_changed', False)
+    previous = jobs.read_artifact(job_id, artifact) if jobs.has_artifact(job_id, artifact) else None
+    if previous is not None and not stale:
+        result, changed, status = previous, False, 'cached'
+    else:
+        started = time.monotonic()
+        result = network.trace_document(load_pdf(jobs.source_path(job_id)), state['step1'])
+        result['durationMs'] = round((time.monotonic() - started) * 1000)
+        changed = previous is None or _stable(previous) != _stable(result)
+        if changed:
+            jobs.write_artifact(job_id, artifact, result)
+        else:
+            result = previous
+        status = 'computed'
+    return {
+        'network': result,
+        'step_status': {'network': status},
+        'summaries': {'network': result['totals']},
+        'upstream_changed': state.get('upstream_changed', False) or changed,
+    }
+
+
 async def classify(state: HazopState):
     """Step 2: group entities into named process functions, by id only."""
     job_id = state['job_id']
@@ -179,7 +223,7 @@ async def classify(state: HazopState):
 
     async def compute():
         doc = load_pdf(jobs.source_path(job_id))
-        return await step2.classify_document(doc, state['step1'], {**opts, 'onProgress': _progress('step2')})
+        return await step2.classify_document(doc, state['step1'], {**opts, 'network': state.get('network'), 'documents': state.get('documents') or [], 'onProgress': _progress('step2')})
 
     def check(result):
         issues = []
@@ -212,7 +256,7 @@ async def sheet_data(state: HazopState):
 
     async def compute():
         doc = load_pdf(jobs.source_path(job_id))
-        return await sheet.extract_sheet_document(doc, state['step1'], {**opts, 'onProgress': _progress('sheet')})
+        return await sheet.extract_sheet_document(doc, state['step1'], {**opts, 'documents': state.get('documents') or [], 'onProgress': _progress('sheet')})
 
     def check(result):
         issues = []
@@ -240,7 +284,8 @@ async def cluster(state: HazopState):
 
     async def compute():
         doc = load_pdf(jobs.source_path(job_id))
-        return await step3.build_document(doc, state['step2'], state['step1'], state['sheet'], {**opts, 'onProgress': _progress('step3')})
+        return await step3.build_document(doc, state['step2'], state['step1'], state['sheet'],
+                                          {**opts, 'network': state.get('network'), 'documents': state.get('documents') or [], 'onProgress': _progress('step3')})
 
     def check(result):
         issues = []
@@ -269,7 +314,7 @@ async def cluster(state: HazopState):
 
     return await _run_step(
         state, step='step3', artifact='step3', raw_artifact='step3-nodes-raw', compute=compute, check=check, summarize=summarize,
-        replay=lambda raw: step3.assemble_document(raw['pages'], raw['fileName'], state['step1'], state['sheet']),
+        replay=lambda raw: step3.assemble_document(raw['pages'], raw['fileName'], state['step1'], state['sheet'], state.get('network')),
         can_replay=rules_raw,
         # A step3.json from the earlier pairwise method is not a rules-based breakdown.
         cache_valid=lambda previous: previous.get('step') == 'step3-nodes',

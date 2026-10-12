@@ -280,6 +280,11 @@
   gap: 6px;
 }
 
+/* The HAZOP worksheet entry point sits apart from the review buttons. */
+.node-card-actions .node-card-worksheet {
+  margin-left: auto;
+}
+
 .node-card-actions button {
   font-size: 12px;
   padding: 4px 10px;

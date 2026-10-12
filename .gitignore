@@ -22,3 +22,10 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# HAZOP reference reports and the library built from them: client documents
+agent/src/hazop_agent/docs/hazop_samples/*
+!agent/src/hazop_agent/docs/hazop_samples/README.md
+
+# Drawings, results, worksheets and chats (PIPELINE_JOBS_DIR)
+data/

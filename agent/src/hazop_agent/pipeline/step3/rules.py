@@ -3,7 +3,7 @@
 - facts the builder is given up front (control loops, relief devices and
   what they protect, off-page connectors, duplicate-train candidates), so it
   doesn't have to rediscover them from a long inventory;
-- Step 7 validation (V1, V2, V4, V5, R6 and the Step 5 size check) run over
+- Step 7 validation (V1, V2, V4-V7, R6 and the Step 5 size check) run over
   whatever node breakdown the model proposed.
 
 All pure.
@@ -40,6 +40,32 @@ MUST_COVER = {'equipment', 'valve', 'line', 'connector'}
 SHOULD_COVER = {'instrument', 'fitting', 'interlock_ref'}
 
 TRAIN_KEYS = ('service', 'capacity', 'designPressure', 'designTemperature', 'material')
+
+# Step 6a: which parameters a node's equipment requires, matched on the
+# equipment's type text (and tag prefix for instruments).
+EQUIPMENT_PARAMETERS = (
+    (re.compile(r'tank|vessel|receiver|sump|\bpot\b|drum', re.I), ('level', 'pressure', 'temperature', 'composition')),
+    (re.compile(r'pump|compressor|blower', re.I), ('flow', 'pressure')),
+    (re.compile(r'filter|strainer', re.I), ('flow', 'pressure')),
+    (re.compile(r'heater|cooler|exchanger|tracing|jacket|condenser|reboiler', re.I), ('temperature',)),
+    (re.compile(r'agitator|mixer', re.I), ('mixing',)),
+)
+TEMPERATURE_INSTRUMENT = re.compile(r'^T[A-Z]{0,3}-?\d', re.I)
+# Guidewords each parameter must have a deviation for; a tuple means any one of them.
+REQUIRED_GUIDEWORDS = {
+    'flow': ('NO', 'MORE', 'LESS', 'REVERSE'),
+    'level': ('MORE', 'LESS'),
+    'pressure': ('MORE', 'LESS'),
+    'temperature': ('MORE', 'LESS'),
+    'composition': (('OTHER THAN', 'AS WELL AS', 'PART OF'),),
+    'mixing': (('NO', 'LESS'),),
+}
+# High/low protection is checked for these; composition and mixing have no "high".
+PROTECTED_PARAMETERS = ('flow', 'level', 'pressure', 'temperature')
+
+# Pressure ratings as printed -> bar(g).
+_PRESSURE = re.compile(r'(-?\d+(?:\.\d+)?)\s*(kgf?\s*/\s*cm\s*\^?\s*2|bar|kpa|mpa|psi)', re.I)
+_TO_BAR = {'kg': 0.980665, 'bar': 1.0, 'kpa': 0.01, 'mpa': 10.0, 'psi': 0.0689476}
 
 
 def _attrs(e):
@@ -130,6 +156,188 @@ def connectors(entities):
     return [e for e in entities if e['category'] == 'connector']
 
 
+def pressure_bar_g(text):
+    """A printed pressure rating in bar(g): the highest positive value it
+    gives, 0.0 for an atmospheric rating ("ATM", "ATM + LIQUID FILLED"), or
+    None when it can't be read. Vacuum limits such as "-50 mm WC" are ignored."""
+    text = text or ''
+    values = []
+    for number, unit in _PRESSURE.findall(text):
+        unit = unit.lower()
+        value = float(number) * _TO_BAR['kg' if unit.startswith('kg') else unit]
+        if value > 0:
+            values.append(value)
+    if values:
+        return max(values)
+    return 0.0 if ATMOSPHERIC.search(text) else None
+
+
+def _expand_ab(tag):
+    """'F-V303A/B' -> ['F-V303A', 'F-V303B']; any other tag -> [tag]."""
+    m = re.match(r'^(.*?)([A-Z])/([A-Z])$', (tag or '').upper().strip())
+    return [m.group(1) + m.group(2), m.group(1) + m.group(3)] if m else [(tag or '').upper().strip()]
+
+
+def pressure_ratings(entities):
+    """Design pressure per equipment tag, in bar(g), from the symbol or its
+    data block (an "A/B" data block rates both trains)."""
+    out = {}
+    for e in entities:
+        if e['category'] not in ('equipment', 'equipment_list_row') or not e.get('tag'):
+            continue
+        printed = _attrs(e).get('designPressure')
+        value = pressure_bar_g(printed)
+        if value is None:
+            continue
+        for tag in _expand_ab(e['tag']):
+            key = normalize_tag(tag)
+            if key not in out or value > out[key]['bar']:
+                out[key] = {'tag': tag, 'bar': value, 'printed': printed}
+    return out
+
+
+def _is_pump(e):
+    return e['category'] == 'equipment' and re.search(r'pump|compressor|blower', e.get('type') or '', re.I)
+
+
+def _rating_text(r):
+    return r['printed'] if r['bar'] == 0 else f"{r['printed']} = {r['bar']:.2f} bar g"
+
+
+def design_pressure_findings(nodes, entities):
+    """V7: equipment rated below the highest pressure a source in the same
+    node can produce (pump design pressure, relief set pressure)."""
+    by_id = {e['id']: e for e in entities}
+    ratings = pressure_ratings(entities)
+    out = []
+    for n in nodes:
+        members = [by_id[i] for i in n['entityIds'] if i in by_id]
+        sources = []
+        for e in members:
+            rating = ratings.get(normalize_tag(e.get('tag')))
+            if _is_pump(e) and rating and rating['bar'] > 0:
+                sources.append((rating['bar'], f"{e['tag']} design {rating['printed']}"))
+            if is_relief(e):
+                value = pressure_bar_g(_attrs(e).get('setPressure'))
+                if value:
+                    sources.append((value, f"{e.get('tag') or e['id']} set {_attrs(e)['setPressure']}"))
+        if not sources:
+            continue
+        top, why = max(sources)
+        low = {}
+        for e in members:
+            if e['category'] != 'equipment' or _is_pump(e) or not e.get('tag'):
+                continue
+            rating = ratings.get(normalize_tag(e['tag']))
+            if rating and rating['bar'] < top - 1e-6:
+                low[e['tag']] = rating
+        if low:
+            listed = ', '.join(f'{tag} ({_rating_text(r)})' for tag, r in sorted(low.items()))
+            out.append(_finding('V7-design-pressure', 'warning',
+                                f"{n['localId']} {n['name']}: rated below the {top:.1f} bar g a source in this node can produce ({why}): {listed}. "
+                                'Study how they could be exposed (blocked discharge, reverse flow, relief return, cleaning path) as MORE pressure.',
+                                node_ids=[n['localId']], entity_ids=[e['id'] for e in members if e.get('tag') in low]))
+    return out
+
+
+def required_parameters(members):
+    """Step 6a: parameter -> why it is required, from the node's members."""
+    out = {}
+    for e in members:
+        if e['category'] == 'line':
+            out.setdefault('flow', 'lines')
+        if e['category'] == 'equipment':
+            for pattern, params in EQUIPMENT_PARAMETERS:
+                if pattern.search(e.get('type') or ''):
+                    for p in params:
+                        out.setdefault(p, e.get('tag') or e['type'])
+        if e['category'] == 'instrument' and TEMPERATURE_INSTRUMENT.match(e.get('tag') or ''):
+            out.setdefault('temperature', e['tag'])
+    return out
+
+
+def _guideword(g):
+    g = (g or '').upper().strip()
+    return {'HIGH': 'MORE', 'HIGHER': 'MORE', 'LOW': 'LESS', 'LOWER': 'LESS', 'MISDIRECTED': 'OTHER THAN'}.get(g, g)
+
+
+def parameter_coverage_findings(nodes, entities):
+    """V6: every parameter the node's equipment requires has a deviation for
+    each required guideword."""
+    by_id = {e['id']: e for e in entities}
+    out = []
+    for n in nodes:
+        # A typical node (D2) lists only its differences; its full node is studied.
+        if n.get('typicalOf'):
+            continue
+        required = required_parameters([by_id[i] for i in n['entityIds'] if i in by_id])
+        have = {(d['parameter'], _guideword(d['guideword'])) for d in n['keyDeviations']}
+        missing = []
+        for param in required:
+            for need in REQUIRED_GUIDEWORDS.get(param, ()):
+                options = need if isinstance(need, tuple) else (need,)
+                if not any((param, g) in have for g in options):
+                    missing.append(f"{'/'.join(options)} {param}")
+        if missing:
+            out.append(_finding('V6-parameter-coverage', 'warning',
+                                f"{n['localId']} {n['name']}: no deviation for {', '.join(missing)} "
+                                f"(required by {', '.join(f'{p}: {w}' for p, w in required.items())}).",
+                                node_ids=[n['localId']]))
+    return out
+
+
+def canonical_parameter(text):
+    """Free-text parameter (old node format) -> a Step 6a parameter."""
+    t = (text or '').lower()
+    for param, words in (('pressure', ('pressure', 'vacuum')), ('temperature', ('temperature', 'temp')),
+                         ('level', ('level', 'inventory', 'overfill')), ('mixing', ('agitation', 'mixing')),
+                         ('composition', ('composition', 'material', 'concentration', 'contamination')),
+                         ('flow', ('flow', 'path', 'routing', 'delivery', 'unloading')), ('phase', ('phase',)),
+                         ('reaction', ('reaction',))):
+        if any(w in t for w in words):
+            return param
+    return 'other'
+
+
+def _consequences_of(c):
+    """A cause's consequences; a cause carrying only safeguards gets them under
+    one consequence still to be described."""
+    if 'consequences' in c:
+        return c['consequences']
+    return [{'consequence': '', 'safeguards': c.get('safeguards') or []}] if c.get('safeguards') else []
+
+
+def _causes_of(d):
+    """A deviation's causes, each with its consequences; older results had one
+    'credibleCause' sentence with the deviation's safeguards."""
+    if 'causes' in d:
+        return [{'cause': c['cause'], 'tags': c.get('tags') or [], 'consequences': _consequences_of(c)} for c in d['causes']]
+    return [{'cause': d.get('credibleCause') or '', 'tags': [], 'consequences': _consequences_of(d)}]
+
+
+def normalize_hazop_fields(n):
+    """Reads a node in an older format as the current one: the single-parameter
+    format ('protection' with one criticalParameter, deviations without
+    safeguards), deviations with one 'credibleCause' instead of a list of
+    causes, and causes without consequences. Nodes already in the current
+    format are returned unchanged."""
+    if 'parameters' in n:
+        if all('consequences' in c for d in n.get('keyDeviations') or [] for c in d.get('causes', [{}])):
+            return n
+        return {**n, 'keyDeviations': [{**{k: v for k, v in d.items() if k not in ('credibleCause', 'safeguards')}, 'causes': _causes_of(d)}
+                                       for d in n['keyDeviations']]}
+    p = n.get('protection') or {}
+    critical = p.get('criticalParameter') or ''
+    out = {k: v for k, v in n.items() if k != 'protection'}
+    out['parameters'] = [{'parameter': canonical_parameter(critical), 'name': critical,
+                          'highSafeguards': p.get('highSafeguards') or [], 'lowSafeguards': p.get('lowSafeguards') or []}] if p else []
+    out['vacuumProtection'] = p.get('vacuumProtection')
+    out['keyDeviations'] = [{'guideword': _guideword(d['guideword']), 'parameter': canonical_parameter(d['parameter']), 'detail': d['parameter'],
+                             'causes': _causes_of(d)}
+                            for d in n.get('keyDeviations') or []]
+    return out
+
+
 # ──────────────────────────────────────────────────────────────── validation
 
 def _finding(check, severity, detail, node_ids=(), entity_ids=(), refs=()):
@@ -143,8 +351,8 @@ def _label(e):
 
 def validate(nodes, entities, interlocks, revised_ids, modes=(), out_of_scope=()):
     """Step 7 over a proposed breakdown. `nodes` carry `localId`, `entityIds`
-    (already expanded from their processes), `interlockRefs`, `protection`,
-    `boundaryFrom/To`, `revisedScope`, `operatingModes`, `equipmentTags`.
+    (already expanded from their processes), `interlockRefs`, `parameters`,
+    `vacuumProtection`, `keyDeviations`, `boundaryFrom/To`, `revisedScope`, `operatingModes`, `equipmentTags`.
     `out_of_scope` are entity ids declared as only passing across the sheet
     (O5); they count as covered."""
     by_id = {e['id']: e for e in entities}
@@ -185,17 +393,17 @@ def validate(nodes, entities, interlocks, revised_ids, modes=(), out_of_scope=()
         if table_refs and key not in table_refs:
             out.append(_finding('V2-unknown', 'warning', f"Node(s) {', '.join(ns)} cite interlock {key}, which is not in the C&E table.", node_ids=ns, refs=[key]))
 
-    # V4 — a safeguard against HIGH and LOW of each node's critical parameter,
+    # V4 — a safeguard against HIGH and LOW of every parameter the node lists,
     # and vacuum protection on atmospheric tanks.
     for n in nodes:
-        p = n['protection']
-        missing = [side for side, tags in (('HIGH', p['highSafeguards']), ('LOW', p['lowSafeguards'])) if not tags]
-        if missing:
-            out.append(_finding('V4-protection-gap', 'warning', f"{n['localId']} {n['name']}: no safeguard against {' or '.join(missing)} {p['criticalParameter'] or 'critical parameter'}.",
+        gaps = [f"{side} {p['name'] or p['parameter']}" for p in n['parameters'] if p['parameter'] in PROTECTED_PARAMETERS
+                for side, tags in (('HIGH', p['highSafeguards']), ('LOW', p['lowSafeguards'])) if not tags]
+        if gaps:
+            out.append(_finding('V4-protection-gap', 'warning', f"{n['localId']} {n['name']}: no safeguard against {', '.join(gaps)}.",
                                 node_ids=[n['localId']]))
         atmospheric = [e for e in (by_id.get(eid) for eid in n['entityIds'])
                        if e and e['category'] == 'equipment' and ATMOSPHERIC.search(_attrs(e).get('designPressure', ''))]
-        if (p['vacuumProtection'] or '').strip().upper() in ('NONE SHOWN', 'NONE') or (atmospheric and not p['vacuumProtection']):
+        if (n['vacuumProtection'] or '').strip().upper() in ('NONE SHOWN', 'NONE') or (atmospheric and not n['vacuumProtection']):
             out.append(_finding('V4-vacuum', 'warning', f"{n['localId']} {n['name']}: atmospheric tank with no vacuum protection shown.", node_ids=[n['localId']]))
 
     # V5 — boundary sanity.
@@ -217,6 +425,11 @@ def validate(nodes, entities, interlocks, revised_ids, modes=(), out_of_scope=()
             out.append(_finding('V5-mid-line', 'warning', f"{n['localId']} {n['name']}: boundary on a line ({', '.join(mid_line)}); place it at a valve, flange or nozzle.",
                                 node_ids=[n['localId']]))
 
+    # V6 — every required parameter x guideword has a deviation; V7 — design
+    # pressure below what a source in the same node can produce.
+    out += parameter_coverage_findings(nodes, entities)
+    out += design_pressure_findings(nodes, entities)
+
     # R6 — new/modified scope is its own node, never merged into existing scope.
     for n in nodes:
         functional = [eid for eid in n['entityIds'] if by_id.get(eid) and by_id[eid]['category'] in MUST_COVER | SHOULD_COVER]
@@ -226,6 +439,13 @@ def validate(nodes, entities, interlocks, revised_ids, modes=(), out_of_scope=()
                                 + ', '.join(_label(by_id[e]) for e in revised_here[:10]), node_ids=[n['localId']], entity_ids=revised_here))
         if n['revisedScope'] and functional and not revised_here:
             out.append(_finding('R6-flag', 'warning', f"{n['localId']} {n['name']} is marked revised scope but contains no red items.", node_ids=[n['localId']]))
+        # The reverse of R6-merged: existing equipment pulled into a revised node.
+        # Existing items stay in their own node, which gains the new operating mode.
+        existing = [eid for eid in n['entityIds'] if eid not in revised_ids and by_id.get(eid, {}).get('category') == 'equipment']
+        if n['revisedScope'] and existing:
+            out.append(_finding('R6-existing-in-revised', 'error', f"{n['localId']} {n['name']} is marked new/modified scope but contains existing equipment: "
+                                + ', '.join(_label(by_id[e]) for e in existing[:10]) + '. Keep existing items in their own node (add the new operating mode '
+                                'there) and put only the new items, with their tie-in valves, in the R6 node.', node_ids=[n['localId']], entity_ids=existing))
 
     # Step 5 — size.
     # SPLIT is a rule, not advice: too many interlocks, or two of the C&E

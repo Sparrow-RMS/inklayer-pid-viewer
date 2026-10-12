@@ -13,6 +13,8 @@ derivation, coverage diagnostics).
 from ..geometry import clamp_bbox, union_bboxes
 from ..jobs import now_iso
 from ..llm import image_part, structured_call, text_part
+from ..documents import format_documents
+from ..network import format_links
 from ..pdf import render_region, to_data_url
 from .prompts import PROCESS_SYSTEM_PROMPT, format_entity_inventory
 from .schema import PAGE_PROCESS_SCHEMA
@@ -71,6 +73,8 @@ async def collect_page(page, step1_page, opts):
                 text_part(f'P&ID page index {page_index}. {len(classifiable)} entities to classify follow, each with its id.'),
                 image_part(to_data_url(png)),
                 text_part(f'Entity inventory (id [category] "tag" @x,y — type (attributes) connectsTo=[...]):\n{listing}'),
+                *_network_parts(opts.get('network'), page_index, step1_page['entities']),
+                *([text_part(supporting)] if (supporting := format_documents(opts.get('documents') or [])) else []),
             ],
         )
         on_progress({'phase': 'page-done', 'pageIndex': page_index, 'processes': len(parsed['processes'])})
@@ -79,6 +83,18 @@ async def collect_page(page, step1_page, opts):
         parsed = {'processes': [], 'pageNotes': '', 'error': str(err)}
 
     return {'pageIndex': page_index, 'step1Page': step1_page, 'classifiable': classifiable, 'raw': parsed}
+
+
+def _network_parts(network_doc, page_index, entities):
+    """The pipework traced from the drawing itself, when the pipeline has it."""
+    page = next((p for p in (network_doc or {}).get('pages', []) if p['pageIndex'] == page_index), None)
+    if page is None:
+        return []
+    return [text_part(
+        'Process links traced exactly from the drawn pipework (no model involved): which equipment / connector '
+        'reaches which, through which valves, with flow direction where the drawing shows it ("->"; "--" where it '
+        'does not). A link listed here is exact; but tracing can miss a connection in a dense area, so a pair NOT listed may still be connected: then read the image. Use the links for flow paths, inlets and outlets.\n'
+        + format_links(page, entities))]
 
 
 def assemble_document(collected, file_name):

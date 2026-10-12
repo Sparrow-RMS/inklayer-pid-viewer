@@ -2,8 +2,8 @@
 import pytest
 
 from hazop_agent.pipeline.step1.extract import (
-    attach_unclaimed_tags, find_composite_tags, merge_sightings, normalize_sighting,
-    release_foreign_composite_tags, synthesize_unclaimed_tags,
+    _resolve_connections, attach_unclaimed_tags, find_composite_tags, localize_connections, merge_sightings,
+    normalize_sighting, qualify_local_refs, release_foreign_composite_tags, synthesize_unclaimed_tags,
 )
 
 
@@ -192,3 +192,43 @@ def test_unrelated_category_pair_does_not_merge_even_when_close():
         sight(TILE_B, category='instrument', tag='X-01', bbox=box(0.05, 0.667, 0.02, 0.03)),
     ], 0, TEXT_BY_ID)
     assert len(m) == 2
+
+
+# ------------------------------------------------------ tile-local connections
+# The model names untagged neighbours by tile-local ids ("v1"), and every tile
+# reuses the same ids, so they must be resolved within their own tile.
+
+def test_tile_local_connection_ids_resolve_within_their_own_tile():
+    tile_results = [
+        {'tile': TILE_A, 'entities': [
+            raw(localId='e1', bbox=box(0.05, 0.1, 0.1, 0.1), connectsTo=['v1', 'v2']),
+            raw(localId='v1', category='valve', bbox=box(0.3, 0.1, 0.05, 0.05), connectsTo=['e1', 'P-101A']),
+            raw(localId='v2', category='valve', bbox=None),  # dropped: no usable box
+        ]},
+        {'tile': TILE_C, 'entities': [
+            raw(localId='e1', bbox=box(0.5, 0.7, 0.1, 0.1), connectsTo=['v1']),
+            raw(localId='v1', category='valve', bbox=box(0.2, 0.7, 0.05, 0.05), connectsTo=['e1']),
+        ]},
+    ]
+    sightings = [s for r in tile_results for i, e in enumerate(r['entities'])
+                 if (s := normalize_sighting(e, r['tile'], TEXT_BY_ID, i))]
+    qualify_local_refs(sightings, tile_results)
+    owner = {}
+    entities = merge_sightings(sightings, 0, TEXT_BY_ID, owner)
+    localize_connections(entities, owner)
+    _resolve_connections(entities)
+
+    def at(tile_, local_id):
+        return owner[next(s['uid'] for s in sightings if s['tileId'] == tile_['id'] and s['localId'] == local_id)]
+    by_id = {e['id']: e for e in entities}
+    pump_a, valve_a, pump_c, valve_c = at(TILE_A, 'e1'), at(TILE_A, 'v1'), at(TILE_C, 'e1'), at(TILE_C, 'v1')
+
+    assert len({pump_a, valve_a, pump_c, valve_c}) == 4
+    # Each local id lands on its own tile's item, never the other tile's "v1".
+    assert by_id[pump_a]['connectsTo'] == [valve_a]
+    assert by_id[pump_a]['resolvedConnections'] == [valve_a]
+    assert by_id[pump_c]['resolvedConnections'] == [valve_c]
+    assert by_id[valve_c]['resolvedConnections'] == [pump_c]
+    # Tags pass through untouched; an id naming a dropped sighting is removed.
+    assert by_id[valve_a]['connectsTo'] == [pump_a, 'P-101A']
+    assert 'v2' not in by_id[pump_a]['connectsTo']

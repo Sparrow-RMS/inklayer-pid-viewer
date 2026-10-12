@@ -12,6 +12,7 @@ scan plus one model call), `assemble_page` the free, pure half.
 import re
 
 from ..jobs import now_iso
+from ..documents import format_documents
 from ..llm import image_part, structured_call, text_part
 from ..pdf import render_region, to_data_url
 from ..step1.extract import normalize_tag
@@ -57,6 +58,7 @@ async def collect_page(page, step1_page, opts=None):
                 image_part(to_data_url(png)),
                 text_part('PDF text layer (positions are page fractions, origin top-left; "(red)" = printed in red):\n'
                           + format_text_listing(step1_page['textItems'], red_ids)),
+                *_document_parts(opts.get('documents') or []),
             ],
         )
         error = None
@@ -66,6 +68,21 @@ async def collect_page(page, step1_page, opts=None):
         on_progress({'phase': 'page-failed', 'pageIndex': page_index, 'error': error})
 
     return {'pageIndex': page_index, 'marks': marks, 'raw': parsed, 'error': error}
+
+
+def _document_parts(docs):
+    """An interlock list or set-value list from the study package: its
+    interlocks belong in the transcription even when no table is printed on
+    the sheet."""
+    supporting = format_documents(docs, ('interlocks', 'parameters'))
+    if not supporting:
+        return []
+    return [text_part(
+        'The study package includes an interlock list and/or set-value list for this plant, below. Every interlock '
+        'it defines for this sheet is a row of the cause-and-effect table: transcribe each one (ref as the document '
+        'gives it, e.g. "I-01"), with its causes and final elements as far as the document and the drawing state them, '
+        'even if no table is printed on the sheet. Set tablePresent to true when rows come from the document. '
+        'Mark a row UNVERIFIED where the document says its logic or initiator is not defined.\n\n' + supporting)]
 
 
 # ─────────────────────────────────────────────────────────────── free half

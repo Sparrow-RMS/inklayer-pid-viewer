@@ -5,11 +5,15 @@ Retries on the transient failures a long tiled run will inevitably hit (rate
 limits, 408/409/5xx, connection resets) are handled by the SDK's own
 `max_retries`, which backs off exponentially and honours Retry-After — the
 same policy the JS pipeline implements by hand.
+
+The client is wrapped for LangSmith, so each call shows up as a child run of
+the graph node that made it. Tracing is off unless LANGSMITH_TRACING=true.
 """
 import asyncio
 import json
 import os
 
+from langsmith.wrappers import wrap_openai
 from openai import AsyncOpenAI
 
 _client = None
@@ -18,7 +22,11 @@ _client = None
 def get_client():
     global _client
     if _client is None:
-        _client = AsyncOpenAI(max_retries=4)
+        # PIPELINE_TIMEOUT (seconds) lifts the SDK's 10-minute default for slow
+        # reasoning models; a call that times out is retried from scratch.
+        timeout = os.environ.get('PIPELINE_TIMEOUT')
+        options = {'timeout': float(timeout)} if timeout else {}
+        _client = wrap_openai(AsyncOpenAI(max_retries=4, **options))
     return _client
 
 

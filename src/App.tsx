@@ -1,12 +1,17 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { PdfAnnotator } from 'inklayer-react'
 import 'inklayer-react/style'
 import ChatPanel, { makeMessageId, type ChatMessage, type NodeStatus, type ProposedNode, type ReviewedNode } from './components/ChatPanel'
 import NodeMergeMenu, { type MergeTarget } from './components/NodeMergeMenu'
+import HazopWorksheet from './components/HazopWorksheet'
+import StudyPackage from './components/StudyPackage'
+import { getPackage, type StudyPackage as Package } from './lib/studyApi'
+import { getSummary, studyIdFor, worksheetNodeId } from './lib/hazopApi'
 import { renderPdfPagesToImages } from './lib/renderPdfPages'
 import { nodeToAnnotation, hazopNodeToAnnotations, type Annotation, type PageDimensions } from './lib/annotationFromNode'
 import { pipelineNodesToProposedNodes, isPipelineNodeFile } from './lib/pipelineNodes'
 import { formatValidation, runPipeline } from './lib/runPipeline'
+import { describeTool, getChatHistory, sendChat } from './lib/chatApi'
 
 // Local single-user identity for now. Once this viewer is wired up behind the
 // MCP server, this will come from whoever is running the human-in-the-loop
@@ -20,10 +25,6 @@ const CHAT_WIDTH_PX = 360
 // Room taken by PdfAnnotator's own header controls left of our toolbar.
 const TOOLBAR_LEADING_PX = 120
 
-const ANALYZE_URL = import.meta.env.VITE_ANALYZE_API_URL || '/api/analyze'
-
-const STUB_REPLY =
-  "This is a placeholder reply — I'm not connected to an agent yet beyond the HAZOP node analysis. Try \"Analyze for HAZOP nodes\" above the drawing."
 
 function Toolbar(props: {
   save: () => void
@@ -31,10 +32,12 @@ function Toolbar(props: {
   exportToExcel: (fileName?: string) => void
   exportToPdf: (fileName?: string) => Promise<void>
   onNewFile: () => void
-  onAnalyze: () => void
   onInsertTestNode: () => void
   onLoadPipelineNodes: () => void
   onRunPipeline: () => void
+  onOpenPackage: () => void
+  /** e.g. "3/7"; null until the package has loaded. */
+  packageProgress: { provided: number; total: number } | null
   maxNodes: number | null
   onMaxNodesChange: (maxNodes: number | null) => void
   isAnalyzing: boolean
@@ -64,9 +67,6 @@ function Toolbar(props: {
       >
         Log annotations
       </button>
-      <button onClick={props.onAnalyze} disabled={props.isAnalyzing}>
-        {props.isAnalyzing ? 'Analyzing…' : 'Analyze for HAZOP nodes'}
-      </button>
       {/* Dev-only: exercises the Accept → draw-a-shape pipeline without
           needing a working OPENAI_API_KEY. Remove once that path is trusted. */}
       <button onClick={props.onInsertTestNode}>Insert test node</button>
@@ -85,6 +85,18 @@ function Toolbar(props: {
       </label>
       <button onClick={props.onRunPipeline} disabled={props.isAnalyzing}>
         {props.isAnalyzing ? 'Running…' : 'Run HAZOP pipeline'}
+      </button>
+      {/* The documents a HAZOP team asks for before it starts, and how many are in. */}
+      <button
+        onClick={props.onOpenPackage}
+        title="Attach the PFD, layout, C&E, process description, set values and data sheets for this drawing"
+        style={
+          props.packageProgress && props.packageProgress.provided < props.packageProgress.total
+            ? { borderColor: '#d97706' }
+            : undefined
+        }
+      >
+        Study package{props.packageProgress ? ` (${props.packageProgress.provided}/${props.packageProgress.total})` : ''}
       </button>
       {/* Paints a step3.json / step3-consolidated.json already on disk, e.g.
           from a CLI run (`uv run hazop-agent run` or `npm run pipeline step3`). */}
@@ -136,6 +148,72 @@ export default function App() {
   const lastClickPos = useRef({ x: 0, y: 0 })
   const [mergeMenu, setMergeMenu] = useState<{ key: string; x: number; y: number } | null>(null)
 
+  // HAZOP worksheets are stored per drawing under the pipeline's job id for
+  // this PDF (name slug + content hash), so they come back with the file.
+  const [studyId, setStudyId] = useState<string | null>(null)
+  const [worksheetNode, setWorksheetNode] = useState<ReviewedNode | null>(null)
+  // node id -> row count, for the "HAZOP worksheet (n)" buttons.
+  const [worksheetCounts, setWorksheetCounts] = useState<Record<string, number>>({})
+  // Supporting documents for this drawing and their readiness checklist.
+  const [studyPackage, setStudyPackage] = useState<Package | null>(null)
+  const [packageOpen, setPackageOpen] = useState(false)
+
+  // Called wherever the open PDF changes, so nothing from the last drawing lingers.
+  const resetWorksheets = useCallback(() => {
+    setStudyId(null)
+    setWorksheetNode(null)
+    setWorksheetCounts({})
+    setStudyPackage(null)
+    setPackageOpen(false)
+  }, [])
+
+  useEffect(() => {
+    if (!pdfData) return
+    let cancelled = false
+    void (async () => {
+      const id = await studyIdFor(fileName, pdfData)
+      if (cancelled) return
+      setStudyId(id)
+      try {
+        const turns = await getChatHistory(id)
+        if (cancelled) return
+        if (turns.length > 0)
+          setMessages((prev) => [
+            ...prev,
+            { id: makeMessageId(), role: 'assistant', kind: 'text', text: `Earlier conversation on ${fileName}:` },
+            ...turns.map((t) => ({ id: makeMessageId(), role: t.role, kind: 'text' as const, text: t.text })),
+          ])
+      } catch (err) {
+        console.warn('[pid-viewer] could not load the chat history', err)
+      }
+      try {
+        const counts = await getSummary(id)
+        if (cancelled) return
+        setWorksheetCounts(counts)
+      } catch (err) {
+        console.warn('[pid-viewer] could not load HAZOP worksheet counts', err)
+      }
+      try {
+        const pkg = await getPackage(id)
+        if (!cancelled) setStudyPackage(pkg)
+      } catch (err) {
+        console.warn('[pid-viewer] could not load the study package', err)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [pdfData, fileName])
+
+  const handleWorksheetRowsChanged = useCallback((nodeId: string, count: number) => {
+    setWorksheetCounts((prev) => (prev[nodeId] === count ? prev : { ...prev, [nodeId]: count }))
+  }, [])
+
+  const openWorksheet = useCallback((node: ReviewedNode) => {
+    setMergeMenu(null)
+    setWorksheetNode(node)
+  }, [])
+
   // Whether an annotation id belongs to one of our own painted nodes. This
   // is NOT the same as checking annotation.extensions.hazopNode — InkLayer's
   // internal round-trip (Annotation -> IAnnotationStore -> Annotation, which
@@ -170,10 +248,11 @@ export default function App() {
 
   const handleFile = useCallback((file: File) => {
     file.arrayBuffer().then((buf) => {
+      resetWorksheets()
       setPdfData(buf)
       setFileName(file.name)
     })
-  }, [])
+  }, [resetWorksheets])
 
   const onDrop = useCallback(
     (e: React.DragEvent<HTMLDivElement>) => {
@@ -183,14 +262,6 @@ export default function App() {
     },
     [handleFile],
   )
-
-  const handleSend = useCallback(async (text: string) => {
-    setMessages((prev) => [...prev, { id: makeMessageId(), role: 'user', kind: 'text', text }])
-    setIsBusy(true)
-    await new Promise((resolve) => setTimeout(resolve, 500 + Math.random() * 400))
-    setMessages((prev) => [...prev, { id: makeMessageId(), role: 'assistant', kind: 'text', text: STUB_REPLY }])
-    setIsBusy(false)
-  }, [])
 
   // node.shapeType picks the converter: 'hazop' can produce several
   // annotations (one per traced route it clustered), 'path'/'rect' always
@@ -206,12 +277,19 @@ export default function App() {
 
   // Assigns each new node a color + id, paints it onto the PDF immediately
   // as pending (dashed), and returns the chat-card versions of the nodes.
-  // Shared by handleAnalyze, handleInsertTestNode, and handleLoadPipelineNodes.
+  // Shared by handleInsertTestNode and paintPipelineDocument.
   const paintProposedNodes = useCallback(
     (nodes: ProposedNode[], messageId: string, dimsMap: Record<number, PageDimensions>): ReviewedNode[] => {
       const reviewed: ReviewedNode[] = nodes.map((node, i) => {
-        const colorIndex = nextColorIndexRef.current++
-        const nodeNumber = nextNodeNumberRef.current++
+        // A pipeline node's label carries its number ("N3 …"), kept stable
+        // through merges, so the drawing and the cards use the same numbers,
+        // and its colour follows the number: after a merge every node keeps
+        // its colour, and the merged node keeps the one of the node it
+        // survives as.
+        const labelled = /^N(\d+)\b/.exec(node.label)?.[1]
+        const nodeNumber = labelled ? Number(labelled) : nextNodeNumberRef.current
+        nextNodeNumberRef.current = Math.max(nextNodeNumberRef.current, nodeNumber) + 1
+        const colorIndex = labelled ? nodeNumber - 1 : nextColorIndexRef.current++
         const dims = dimsMap[node.pageIndex]
         if (dims) {
           const key = `${messageId}:${i}`
@@ -229,56 +307,11 @@ export default function App() {
     [syncCanvas, annotationsForNode],
   )
 
-  const handleAnalyze = useCallback(async () => {
-    if (!pdfData || isBusy) return
-    setIsBusy(true)
-    setChatCollapsed(false)
-
-    try {
-      const pages = await renderPdfPagesToImages(pdfData)
-      const dimsMap: Record<number, PageDimensions> = {}
-      for (const p of pages) dimsMap[p.pageIndex] = { width: p.pdfWidth, height: p.pdfHeight }
-      setPageDims((prev) => ({ ...prev, ...dimsMap }))
-
-      const response = await fetch(ANALYZE_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fileName,
-          pages: pages.map((p) => ({ pageIndex: p.pageIndex, image: p.image })),
-        }),
-      })
-
-      if (!response.ok) {
-        const body = await response.json().catch(() => null)
-        throw new Error(body?.error || `Analysis request failed (${response.status})`)
-      }
-
-      const { nodes }: { nodes: ProposedNode[] } = await response.json()
-
-      const messageId = makeMessageId()
-      const reviewedNodes = paintProposedNodes(nodes, messageId, dimsMap)
-      setMessages((prev) => [...prev, { id: messageId, role: 'assistant', kind: 'nodes', nodes: reviewedNodes }])
-    } catch (err) {
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: makeMessageId(),
-          role: 'assistant',
-          kind: 'text',
-          text: `HAZOP node analysis failed: ${(err as Error).message}. Is the backend server running?`,
-        },
-      ])
-    } finally {
-      setIsBusy(false)
-    }
-  }, [pdfData, fileName, isBusy, paintProposedNodes])
-
   const handleInsertTestNode = useCallback(async () => {
     if (!pdfData) return
     setChatCollapsed(false)
 
-    // Same page-dimension lookup handleAnalyze does, so Accept has what it
+    // Page dimensions from the PDF, so Accept has what it
     // needs — this button exists specifically to test the pipeline without a VLM.
     const pages = await renderPdfPagesToImages(pdfData)
     const dimsMap: Record<number, PageDimensions> = {}
@@ -317,15 +350,14 @@ export default function App() {
     setMessages((prev) => [...prev, { id: makeMessageId(), role: 'assistant', kind: 'text', text }])
   }, [])
 
-  // Paints a step3.json / step3-consolidated.json document exactly the way
-  // handleAnalyze paints a VLM response — same paintProposedNodes call, same
-  // chat-card review flow. Every node's bbox/routes are already normalized
-  // page fractions computed from step 1's real entity geometry, so — same as
-  // the single-shot flow — nothing here re-derives or re-guesses a
-  // coordinate; this only maps the pipeline's JSON shape onto the frontend's
-  // existing node type. Shared by the file loader and the agent run.
+  // Paints a step3.json / step3-consolidated.json document: one card and one
+  // set of shapes per node. Every node's bbox/routes are already normalized
+  // page fractions computed from step 1's real entity geometry, so nothing
+  // here re-derives or re-guesses a coordinate; this only maps the pipeline's
+  // JSON shape onto the frontend's node type. Shared by the file loader, the
+  // agent run and the chat.
   const paintPipelineDocument = useCallback(
-    async (document: unknown, source: string) => {
+    async (document: unknown, source: string, replace = false) => {
       if (!pdfData) return
       if (!isPipelineNodeFile(document)) {
         addAssistantText(`${source} doesn't look like a step3.json / step3-consolidated.json export (expected { pages: [{ pageIndex, nodes }] }).`)
@@ -346,11 +378,21 @@ export default function App() {
       for (const p of pages) dimsMap[p.pageIndex] = { width: p.pdfWidth, height: p.pdfHeight }
       setPageDims((prev) => ({ ...prev, ...dimsMap }))
 
+      if (replace) {
+        // The breakdown changed (an edit from the chat): the new one replaces
+        // every node card and painted node, numbered from 1 again.
+        paintedNodes.current.clear()
+        paintedNodeIdPrefix.current.clear()
+        nextColorIndexRef.current = 0
+        nextNodeNumberRef.current = 1
+      }
       const messageId = makeMessageId()
       const reviewedNodes = paintProposedNodes(nodes, messageId, dimsMap)
       setMessages((prev) => [
-        ...prev,
-        { id: makeMessageId(), role: 'assistant', kind: 'text', text: `Loaded ${nodes.length} node${nodes.length === 1 ? '' : 's'} from ${source}.` },
+        ...(replace ? prev.filter((m) => m.kind !== 'nodes') : prev),
+        ...(replace
+          ? []
+          : [{ id: makeMessageId(), role: 'assistant' as const, kind: 'text' as const, text: `Loaded ${nodes.length} node${nodes.length === 1 ? '' : 's'} from ${source}.` }]),
         { id: messageId, role: 'assistant', kind: 'nodes', nodes: reviewedNodes },
       ])
     },
@@ -372,6 +414,49 @@ export default function App() {
       await paintPipelineDocument(parsed, file.name)
     },
     [pdfData, paintPipelineDocument, addAssistantText],
+  )
+
+  // The chat assistant, on the drawing's thread (its study / job id, the same
+  // thread the pipeline runs under). It can merge, rename and undo nodes; the
+  // new breakdown replaces the cards and the painting.
+  const handleSend = useCallback(
+    async (text: string) => {
+      setMessages((prev) => [...prev, { id: makeMessageId(), role: 'user', kind: 'text', text }])
+      if (!studyId) {
+        addAssistantText('Open a drawing first: the conversation belongs to the drawing.')
+        return
+      }
+      const threadId = studyId
+      setIsBusy(true)
+      const statusId = makeMessageId()
+      setMessages((prev) => [...prev, { id: statusId, role: 'assistant', kind: 'text', text: 'Thinking…' }])
+      const setStatus = (status: string) =>
+        setMessages((prev) => prev.map((m) => (m.id === statusId && m.kind === 'text' ? { ...m, text: status } : m)))
+      const reply = (answer: string) =>
+        setMessages((prev) => [...prev.filter((m) => m.id !== statusId), { id: makeMessageId(), role: 'assistant', kind: 'text', text: answer }])
+      let replied = false
+      try {
+        await sendChat(threadId, text, (event) => {
+          if (event.type === 'tool') setStatus(describeTool(event.name))
+          else if (event.type === 'nodes') {
+            void paintPipelineDocument(event.document, 'the assistant', true)
+            getSummary(threadId).then(setWorksheetCounts, () => {})
+          } else if (event.type === 'message') {
+            replied = true
+            reply(event.text)
+          } else if (event.type === 'error') {
+            replied = true
+            reply(`The assistant failed: ${event.message}`)
+          }
+        })
+        if (!replied) reply('(no reply)')
+      } catch (err) {
+        reply(`The assistant isn't reachable: ${(err as Error).message}. Is the agent server running (\`uv run hazop-agent serve\` in agent/)?`)
+      } finally {
+        setIsBusy(false)
+      }
+    },
+    [studyId, paintPipelineDocument, addAssistantText],
   )
 
   // Sends the open PDF to the LangGraph agent and runs every step in one
@@ -607,11 +692,15 @@ export default function App() {
               <Toolbar
                 {...props}
                 fileName={fileName}
-                onNewFile={() => setPdfData(null)}
-                onAnalyze={handleAnalyze}
+                onNewFile={() => {
+                  resetWorksheets()
+                  setPdfData(null)
+                }}
                 onInsertTestNode={handleInsertTestNode}
                 onLoadPipelineNodes={() => pipelineFileInputRef.current?.click()}
                 onRunPipeline={handleRunPipeline}
+                onOpenPackage={() => setPackageOpen(true)}
+                packageProgress={studyPackage && { provided: studyPackage.checklist.provided, total: studyPackage.checklist.total }}
                 maxNodes={maxNodes}
                 onMaxNodesChange={setMaxNodes}
                 isAnalyzing={isBusy}
@@ -649,6 +738,10 @@ export default function App() {
           sourceLabel={`Node ${getNodeByKey(mergeMenu.key)?.nodeNumber ?? '?'}`}
           targets={getMergeTargets(mergeMenu.key)}
           onSelect={(target) => handleMergeInto(mergeMenu.key, target)}
+          onOpenWorksheet={() => {
+            const node = getNodeByKey(mergeMenu.key)
+            if (node) openWorksheet(node)
+          }}
           onClose={() => setMergeMenu(null)}
         />
       )}
@@ -659,7 +752,31 @@ export default function App() {
         onNodeStatusChange={handleNodeStatusChange}
         collapsed={chatCollapsed}
         onToggleCollapsed={() => setChatCollapsed((c) => !c)}
+        onOpenWorksheet={openWorksheet}
+        worksheetCounts={worksheetCounts}
       />
+      {worksheetNode && (
+        <HazopWorksheet
+          // Remount per node and study, so the worksheet starts in its loading state.
+          key={`${studyId}|${worksheetNodeId(worksheetNode)}`}
+          node={worksheetNode}
+          studyId={studyId}
+          rightOffset={chatCollapsed ? 0 : CHAT_WIDTH_PX}
+          onClose={() => setWorksheetNode(null)}
+          onRowsChanged={handleWorksheetRowsChanged}
+          packageMissing={studyPackage ? studyPackage.checklist.missing : null}
+          onOpenPackage={() => setPackageOpen(true)}
+        />
+      )}
+      {packageOpen && (
+        <StudyPackage
+          studyId={studyId}
+          fileName={fileName}
+          rightOffset={chatCollapsed ? 0 : CHAT_WIDTH_PX}
+          onClose={() => setPackageOpen(false)}
+          onChanged={setStudyPackage}
+        />
+      )}
     </>
   )
 }
