@@ -5,6 +5,9 @@ import ChatPanel, { makeMessageId, type ChatMessage, type NodeStatus, type Propo
 import NodeMergeMenu, { type MergeTarget } from './components/NodeMergeMenu'
 import HazopWorksheet from './components/HazopWorksheet'
 import StudyPackage from './components/StudyPackage'
+import UploadScreen from './components/UploadScreen'
+import PipelineRunDialog, { type PipelineRun } from './components/PipelineRunDialog'
+import './components/ViewerToolbar.css'
 import { getPackage, type StudyPackage as Package } from './lib/studyApi'
 import { getSummary, studyIdFor, worksheetNodeId } from './lib/hazopApi'
 import { renderPdfPagesToImages } from './lib/renderPdfPages'
@@ -41,25 +44,57 @@ function Toolbar(props: {
   maxNodes: number | null
   onMaxNodesChange: (maxNodes: number | null) => void
   isAnalyzing: boolean
+  /** Set while a run's progress dialog exists: the busy Run button reopens it. */
+  onShowProgress?: () => void
   fileName: string
   maxWidth: string
 }) {
   return (
-    // flexWrap so this survives adding buttons: without it, a toolbar this
-    // full silently overflows PdfAnnotator's fixed-width actions container
-    // and the last button(s) get clipped off-screen behind the chat panel
-    // with no scrollbar or other indication they still exist — exactly what
-    // happened to "Load pipeline nodes" once "Insert test node" pushed the
-    // row past the available width. flexWrap alone isn't enough: PdfAnnotator
-    // sizes the actions container to its content (flex: 0 0 auto), so the row
-    // never runs out of room to wrap. maxWidth gives it a real limit.
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', rowGap: 4, maxWidth: props.maxWidth }}>
-      <span style={{ fontSize: 13, opacity: 0.7, marginRight: 4 }}>{props.fileName}</span>
+    // One row that scrolls sideways (ViewerToolbar.css), so it survives
+    // adding buttons: without it, a toolbar this full silently overflows
+    // PdfAnnotator's fixed-width actions container and the last button(s) get
+    // clipped off-screen behind the chat panel. Wrapping isn't an option
+    // either: PdfAnnotator's header is a fixed height, so a third row gets
+    // clipped. maxWidth gives the row a real limit to scroll within, since
+    // PdfAnnotator sizes the actions container to its content (flex: 0 0 auto).
+    <div className="viewer-toolbar" style={{ maxWidth: props.maxWidth }}>
+      <span className="viewer-toolbar-file" title={props.fileName}>{props.fileName}</span>
+      {/* Runs the step1→2→3 LangGraph agent (agent/, `uv run hazop-agent
+          serve`) on the open PDF and paints its nodes when it finishes.
+          Max nodes per page drives consolidation; leave it empty to skip it. */}
+      <label className="viewer-toolbar-field" title="Reduced option: merge each page down to at most this many nodes (empty = the rules' own breakdown, typically 4–5)">
+        Max nodes
+        <input
+          type="number"
+          min={1}
+          value={props.maxNodes ?? ''}
+          onChange={(e) => props.onMaxNodesChange(e.target.value ? Math.max(1, Math.floor(Number(e.target.value))) : null)}
+          placeholder="auto"
+        />
+      </label>
+      {props.isAnalyzing && props.onShowProgress ? (
+        <button className="primary" onClick={props.onShowProgress} title="Show the run's progress">
+          Running… view progress
+        </button>
+      ) : (
+        <button className="primary" onClick={props.onRunPipeline} disabled={props.isAnalyzing}>
+          {props.isAnalyzing ? 'Running…' : 'Run HAZOP pipeline'}
+        </button>
+      )}
+      {/* The documents a HAZOP team asks for before it starts, and how many are in. */}
+      <button
+        onClick={props.onOpenPackage}
+        title="Attach the PFD, layout, C&E, process description, set values and data sheets for this drawing"
+        className={props.packageProgress && props.packageProgress.provided < props.packageProgress.total ? 'warn' : undefined}
+      >
+        Study package{props.packageProgress ? ` (${props.packageProgress.provided}/${props.packageProgress.total})` : ''}
+      </button>
       <button onClick={props.onNewFile}>New file</button>
       <button onClick={() => props.save()}>Save</button>
       <button onClick={() => props.exportToExcel()}>Export Excel</button>
       <button onClick={() => props.exportToPdf()}>Export PDF</button>
       <button
+        className="subtle"
         onClick={() => {
           const annotations = props.getAnnotations()
           console.log('[pid-viewer] current annotations', annotations)
@@ -69,35 +104,7 @@ function Toolbar(props: {
       </button>
       {/* Dev-only: exercises the Accept → draw-a-shape pipeline without
           needing a working OPENAI_API_KEY. Remove once that path is trusted. */}
-      <button onClick={props.onInsertTestNode}>Insert test node</button>
-      {/* Runs the step1→2→3 LangGraph agent (agent/, `uv run hazop-agent
-          serve`) on the open PDF and paints its nodes when it finishes.
-          Max nodes per page drives consolidation; leave it empty to skip it. */}
-      <label style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 4 }} title="Reduced option: merge each page down to at most this many nodes (empty = the rules' own breakdown, typically 4–5)">
-        Max nodes
-        <input
-          type="number"
-          min={1}
-          value={props.maxNodes ?? ''}
-          onChange={(e) => props.onMaxNodesChange(e.target.value ? Math.max(1, Math.floor(Number(e.target.value))) : null)}
-          style={{ width: 48 }}
-        />
-      </label>
-      <button onClick={props.onRunPipeline} disabled={props.isAnalyzing}>
-        {props.isAnalyzing ? 'Running…' : 'Run HAZOP pipeline'}
-      </button>
-      {/* The documents a HAZOP team asks for before it starts, and how many are in. */}
-      <button
-        onClick={props.onOpenPackage}
-        title="Attach the PFD, layout, C&E, process description, set values and data sheets for this drawing"
-        style={
-          props.packageProgress && props.packageProgress.provided < props.packageProgress.total
-            ? { borderColor: '#d97706' }
-            : undefined
-        }
-      >
-        Study package{props.packageProgress ? ` (${props.packageProgress.provided}/${props.packageProgress.total})` : ''}
-      </button>
+      <button className="subtle" onClick={props.onInsertTestNode}>Insert test node</button>
       {/* Paints a step3.json / step3-consolidated.json already on disk, e.g.
           from a CLI run (`uv run hazop-agent run` or `npm run pipeline step3`). */}
       <button onClick={props.onLoadPipelineNodes} title="Load a step3.json / step3-consolidated.json exported by the pipeline CLI">
@@ -113,6 +120,8 @@ export default function App({ embedded = false }: { embedded?: boolean }) {
   const [chatCollapsed, setChatCollapsed] = useState(false)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [isBusy, setIsBusy] = useState(false)
+  // The progress dialog for a fresh (uncached) pipeline run; null for cached runs.
+  const [pipelineRun, setPipelineRun] = useState<PipelineRun | null>(null)
   const [pageDims, setPageDims] = useState<Record<number, PageDimensions>>({})
   // Empty by default: the node rules already target 4–5 nodes per sheet. A
   // number here asks for the rules' "reduced option" (fewer, merged nodes).
@@ -238,7 +247,6 @@ export default function App({ embedded = false }: { embedded?: boolean }) {
     setAnnotatorKey((k) => k + 1)
   }, [findKeyForAnnotationId])
 
-  const fileInputRef = useRef<HTMLInputElement>(null)
   const pipelineFileInputRef = useRef<HTMLInputElement>(null)
 
   // PdfAnnotator's `data` prop is handed to pdfjs, which may transfer/detach
@@ -253,15 +261,6 @@ export default function App({ embedded = false }: { embedded?: boolean }) {
       setFileName(file.name)
     })
   }, [resetWorksheets])
-
-  const onDrop = useCallback(
-    (e: React.DragEvent<HTMLDivElement>) => {
-      e.preventDefault()
-      const file = e.dataTransfer.files[0]
-      if (file) handleFile(file)
-    },
-    [handleFile],
-  )
 
   // node.shapeType picks the converter: 'hazop' can produce several
   // annotations (one per traced route it clustered), 'path'/'rect' always
@@ -471,13 +470,23 @@ export default function App({ embedded = false }: { embedded?: boolean }) {
     const setStatus = (text: string) =>
       setMessages((prev) => prev.map((m) => (m.id === statusId && m.kind === 'text' ? { ...m, text } : m)))
     setMessages((prev) => [...prev, { id: statusId, role: 'assistant', kind: 'text', text: 'Starting the HAZOP pipeline…' }])
+    setPipelineRun(null)
+    const updateRun = (update: (run: PipelineRun) => Partial<PipelineRun>) =>
+      setPipelineRun((run) => (run ? { ...run, ...update(run) } : run))
 
     try {
       const outcome: { result?: { document: unknown; source: string; report: string }; failure?: string } = {}
       await runPipeline(pdfData.slice(0), fileName, maxNodes, (event) => {
-        if (event.type === 'progress') setStatus(`Pipeline running… ${event.message.trim()}`)
-        else if (event.type === 'step') setStatus(`Pipeline running… ${event.step} ${event.status}`)
-        else if (event.type === 'error') outcome.failure = event.message
+        if (event.type === 'run') {
+          if (!event.cached)
+            setPipelineRun({ open: true, phase: 'running', startedAt: Date.now(), lines: [], steps: {}, consolidating: maxNodes !== null })
+        } else if (event.type === 'progress') {
+          setStatus(`Pipeline running… ${event.message.trim()}`)
+          updateRun((run) => ({ lines: [...run.lines, event.message].slice(-500) }))
+        } else if (event.type === 'step') {
+          setStatus(`Pipeline running… ${event.step} ${event.status}`)
+          updateRun((run) => ({ steps: { ...run.steps, [event.step]: event.status } }))
+        } else if (event.type === 'error') outcome.failure = event.message
         else if (event.type === 'result')
           outcome.result = {
             document: event.document,
@@ -493,7 +502,9 @@ export default function App({ embedded = false }: { embedded?: boolean }) {
       const { document, source, report } = outcome.result
       setStatus(report ? `Pipeline finished.\n${report}` : 'Pipeline finished.')
       await paintPipelineDocument(document, source)
+      updateRun(() => ({ phase: 'done', finishedAt: Date.now() }))
     } catch (err) {
+      updateRun(() => ({ phase: 'failed', finishedAt: Date.now(), error: (err as Error).message }))
       setStatus(`HAZOP pipeline failed: ${(err as Error).message}. Is the agent server running (\`uv run hazop-agent serve\` in agent/)?`)
     } finally {
       setIsBusy(false)
@@ -617,36 +628,7 @@ export default function App({ embedded = false }: { embedded?: boolean }) {
     [getNodeByKey, pageDims, syncCanvas, annotationsForNode],
   )
 
-  if (!pdfData) {
-    return (
-      <div
-        onDragOver={(e) => e.preventDefault()}
-        onDrop={onDrop}
-        style={{
-          height: '100%',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 16,
-        }}
-      >
-        <h1 style={{ margin: 0 }}>P&ID Annotator</h1>
-        <p style={{ margin: 0, opacity: 0.7 }}>Drop a PDF here, or choose a file to open it.</p>
-        <button onClick={() => fileInputRef.current?.click()}>Choose PDF</button>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="application/pdf"
-          hidden
-          onChange={(e) => {
-            const file = e.target.files?.[0]
-            if (file) handleFile(file)
-          }}
-        />
-      </div>
-    )
-  }
+  if (!pdfData) return <UploadScreen onFile={handleFile} />
 
   return (
     <>
@@ -708,8 +690,9 @@ export default function App({ embedded = false }: { embedded?: boolean }) {
                 maxNodes={maxNodes}
                 onMaxNodesChange={setMaxNodes}
                 isAnalyzing={isBusy}
+                onShowProgress={pipelineRun ? () => setPipelineRun((run) => run && { ...run, open: true }) : undefined}
                 // Viewer width minus the search/comment icons on the header's left.
-                maxWidth={`calc(${chatCollapsed ? '100vw' : `100vw - ${CHAT_WIDTH_PX}px`} - ${TOOLBAR_LEADING_PX}px)`}
+                maxWidth={`calc(${chatCollapsed ? '100vw' : `100vw - ${CHAT_WIDTH_PX}px`} - var(--viewer-sidebar-width, 0px) - ${TOOLBAR_LEADING_PX}px)`}
               />
             )
           }}
@@ -735,6 +718,9 @@ export default function App({ embedded = false }: { embedded?: boolean }) {
           e.target.value = '' // allow re-selecting the same file next time
         }}
       />
+      {pipelineRun?.open && (
+        <PipelineRunDialog run={pipelineRun} onClose={() => setPipelineRun((run) => run && { ...run, open: false })} />
+      )}
       {mergeMenu && (
         <NodeMergeMenu
           x={mergeMenu.x}

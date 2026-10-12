@@ -36,14 +36,45 @@ function LoginScreen({ onSignIn }: { onSignIn: (name: string) => void }) {
 
   return <main className="login-screen">
     <section className="login-showcase">
+      <div aria-hidden="true" className="showcase-glow" />
+      <div aria-hidden="true" className="showcase-grid" />
       <header className="showcase-header">
         <div aria-label="Sparrow logo placeholder" className="sparrow-logo-slot" role="img">SPARROW LOGO</div>
+        <span className="showcase-pill"><i />AI node segmentation is live</span>
       </header>
+
       <div className="login-showcase-copy">
-        <p className="showcase-kicker">PROCESS SAFETY · OPERATIONS</p>
-        <h2>Process safety,<br />structured.</h2>
-        <p>Bring facility risk reviews and safety workflows together in one place.</p>
+        <p className="showcase-kicker">Process safety · HAZOP</p>
+        <h2>HAZOP studies,<br /><span>drafted in hours.</span></h2>
+        <p>Drop in a P&amp;ID. Inklayer divides it into nodes, drafts every worksheet and keeps your team reviewing in one place.</p>
       </div>
+
+      <figure aria-hidden="true" className="showcase-preview">
+        <div className="preview-bar"><span /><span /><span /><em>P&amp;ID-104 · Crude Feed Section</em></div>
+        <svg className="preview-drawing" viewBox="0 0 420 200">
+          <g className="drawing-base">
+            <rect height="70" rx="10" width="44" x="34" y="64" />
+            <circle cx="186" cy="150" r="16" />
+            <rect height="56" rx="22" width="44" x="330" y="40" />
+            <path d="M178 48 l16 10 l-16 10 z M210 48 l-16 10 l16 10 z" />
+          </g>
+          <path className="node-run node-a" d="M78 80 H150 V58 H250 V68 H330" />
+          <path className="node-run node-b" d="M78 118 H130 V150 H170" />
+          <path className="node-run node-c" d="M202 150 H300 V96 H352" />
+          <g className="node-tag" transform="translate(236 26)"><rect height="20" rx="6" width="58" /><text x="29" y="14">NODE 01</text></g>
+          <g className="node-tag tag-c" transform="translate(222 122)"><rect height="20" rx="6" width="58" /><text x="29" y="14">NODE 03</text></g>
+        </svg>
+        <div className="preview-chip">
+          <span className="chip-icon"><Symbol>auto_awesome</Symbol></span>
+          <span><strong>Node 03 · No flow</strong><small>4 causes · 3 safeguards drafted</small></span>
+        </div>
+      </figure>
+
+      <ul className="showcase-points">
+        <li><Symbol>account_tree</Symbol><span><strong>Auto nodes</strong>Whole pipe runs, painted on the drawing</span></li>
+        <li><Symbol>table_chart</Symbol><span><strong>Draft worksheets</strong>Deviations, causes and safeguards</span></li>
+        <li><Symbol>forum</Symbol><span><strong>Review together</strong>Edit by hand or through chat</span></li>
+      </ul>
     </section>
 
     <section className="login-form-side">
@@ -64,21 +95,50 @@ function LoginScreen({ onSignIn }: { onSignIn: (name: string) => void }) {
   </main>
 }
 
+const ROLES: Role[] = ['Admin', 'Member', 'Viewer']
+const ROLE_DETAILS: Record<Role, { icon: string; blurb: string }> = {
+  Admin: { icon: 'shield_person', blurb: 'Manages members, roles and workspace settings.' },
+  Member: { icon: 'edit_note', blurb: 'Runs the pipeline, edits nodes and drafts worksheets.' },
+  Viewer: { icon: 'visibility', blurb: 'Opens drawings and reads worksheets without editing.' },
+}
+const AVATAR_TONES = 6
+
+function avatarTone(name: string) {
+  let hash = 0
+  for (const char of name) hash = (hash * 31 + char.charCodeAt(0)) >>> 0
+  return `tone-${hash % AVATAR_TONES}`
+}
+
+function Avatar({ name, className = '' }: { name: string; className?: string }) {
+  return <span className={`avatar ${avatarTone(name)} ${className}`}>{initialsForName(name)}</span>
+}
+
 function AddMemberDialog({ onClose, onAdd }: { onClose: () => void; onAdd: (nameOrEmail: string, role: Role) => void }) {
+  const [role, setRole] = useState<Role>('Member')
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     const form = new FormData(event.currentTarget)
-    onAdd(String(form.get('user') ?? '').trim(), String(form.get('role') ?? 'Member') as Role)
+    onAdd(String(form.get('user') ?? '').trim(), role)
   }
   return <div className="dialog-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
     <section aria-labelledby="add-member-title" aria-modal="true" className="member-dialog" role="dialog">
-      <header className="dialog-header"><h2 id="add-member-title"><Symbol>person_add</Symbol>Add Member</h2><button aria-label="Close dialog" className="icon-button" onClick={onClose} type="button"><Symbol>close</Symbol></button></header>
+      <header className="dialog-header">
+        <span className="dialog-icon"><Symbol>person_add</Symbol></span>
+        <div><h2 id="add-member-title">Invite a teammate</h2><p>They'll get access to this workspace's drawings and worksheets.</p></div>
+        <button aria-label="Close dialog" className="icon-button" onClick={onClose} type="button"><Symbol>close</Symbol></button>
+      </header>
       <form className="dialog-form" onSubmit={submit}>
-        <label htmlFor="invite-user">USER</label><input autoFocus id="invite-user" name="user" placeholder="Enter user name or email address..." required />
-        <label htmlFor="invite-role">ROLE</label><select defaultValue="Member" id="invite-role" name="role"><option>Admin</option><option>Member</option><option>Viewer</option></select>
+        <label htmlFor="invite-user">Name or email</label>
+        <div className="field-wrap"><Symbol>alternate_email</Symbol><input autoFocus id="invite-user" name="user" placeholder="jane@company.com" required /></div>
+        <span className="field-label" id="invite-role-label">Role</span>
+        <div aria-labelledby="invite-role-label" className="role-picker" role="radiogroup">
+          {ROLES.map((option) => <button aria-checked={role === option} className={`role-option role-${option.toLowerCase()}${role === option ? ' selected' : ''}`} key={option} onClick={() => setRole(option)} role="radio" type="button">
+            <Symbol>{ROLE_DETAILS[option].icon}</Symbol><strong>{option}</strong><small>{ROLE_DETAILS[option].blurb}</small>
+          </button>)}
+        </div>
         <div className="dialog-actions">
           <button className="button-secondary" onClick={onClose} type="button">Cancel</button>
-          <button className="button-primary" type="submit">Submit</button>
+          <button className="button-primary" type="submit"><Symbol>send</Symbol>Send invite</button>
         </div>
       </form>
     </section>
@@ -91,12 +151,12 @@ function Dashboard({ userName, onSignOut }: { userName: string; onSignOut: () =>
   const [members, setMembers] = useState<Member[]>([])
   const [dialogOpen, setDialogOpen] = useState(false)
   const [openMenu, setOpenMenu] = useState<number | null>(null)
-  const [filterOpen, setFilterOpen] = useState(false)
   const [query, setQuery] = useState('')
-  const [roleFilter, setRoleFilter] = useState('All roles')
+  const [roleFilter, setRoleFilter] = useState<Role | 'All'>('All')
   const [profileOpen, setProfileOpen] = useState(false)
   const [notice, setNotice] = useState('')
-  const filteredMembers = members.filter((member) => `${member.name} ${member.title} ${member.email}`.toLowerCase().includes(query.toLowerCase()) && (roleFilter === 'All roles' || member.role === roleFilter))
+  const filteredMembers = members.filter((member) => `${member.name} ${member.title} ${member.email}`.toLowerCase().includes(query.toLowerCase()) && (roleFilter === 'All' || member.role === roleFilter))
+  const countFor = (role: Role) => members.filter((member) => member.role === role).length
 
   const addMember = (nameOrEmail: string, role: Role) => {
     const isEmail = nameOrEmail.includes('@')
@@ -115,36 +175,99 @@ function Dashboard({ userName, onSignOut }: { userName: string; onSignOut: () =>
     if (nextSection === 'Application') setApplicationOpened(true)
   }
 
-  return <DashboardFrame userName={userName} section={section} onSectionChange={handleSectionChange} onSignOut={onSignOut} profileOpen={profileOpen} setProfileOpen={setProfileOpen}>
+  const stats = [
+    { label: 'Total members', value: members.length, icon: 'groups', tone: 'indigo' },
+    { label: 'Admins', value: countFor('Admin'), icon: 'shield_person', tone: 'violet' },
+    { label: 'Members', value: countFor('Member'), icon: 'edit_note', tone: 'teal' },
+    { label: 'Viewers', value: countFor('Viewer'), icon: 'visibility', tone: 'amber' },
+  ]
+
+  return <DashboardFrame memberCount={members.length} userName={userName} section={section} onSectionChange={handleSectionChange} onSignOut={onSignOut} profileOpen={profileOpen} setProfileOpen={setProfileOpen}>
     <main className="team-content" hidden={section !== 'Team'}>
-      <header className="team-heading-row"><div className="team-title"><h1>Team</h1><span className="member-count">{members.length} members</span></div><button className="button-primary add-member-button" onClick={() => setDialogOpen(true)} type="button"><Symbol>add</Symbol>Add Member</button></header>
+      <header className="team-hero">
+        <div aria-hidden="true" className="team-hero-glow" />
+        <div className="team-title">
+          <p className="eyebrow">Workspace</p>
+          <h1>Team</h1>
+          <p>Invite the people who review drawings and sign off worksheets.</p>
+        </div>
+        <button className="button-primary add-member-button" onClick={() => setDialogOpen(true)} type="button"><Symbol>add</Symbol>Invite member</button>
+      </header>
+
+      <section aria-label="Team summary" className="stat-grid">
+        {stats.map((stat) => <article className={`stat-card stat-${stat.tone}`} key={stat.label}>
+          <span className="stat-icon"><Symbol>{stat.icon}</Symbol></span>
+          <span className="stat-copy"><small>{stat.label}</small><strong>{stat.value}</strong></span>
+        </article>)}
+      </section>
+
       {notice && <div className="notice-bar" role="status"><Symbol>check_circle</Symbol>{notice}<button aria-label="Dismiss notice" onClick={() => setNotice('')} type="button"><Symbol>close</Symbol></button></div>}
-      <div className="roster-tools"><button aria-expanded={filterOpen} aria-label="Toggle roster filters" className={`icon-button filter-toggle${filterOpen ? ' active' : ''}`} onClick={() => setFilterOpen((value) => !value)} type="button"><Symbol>filter_list</Symbol></button>
-        {filterOpen && <div className="filter-controls"><label className="roster-search"><Symbol>search</Symbol><input aria-label="Search team members" onChange={(event) => setQuery(event.target.value)} placeholder="Search members" value={query} /></label><select aria-label="Filter by role" onChange={(event) => setRoleFilter(event.target.value)} value={roleFilter}><option>All roles</option><option>Admin</option><option>Member</option><option>Viewer</option></select></div>}
-      </div>
-      {filteredMembers.length ? <div className="roster-table-wrap"><table className="roster-table"><thead><tr><th scope="col">Name</th><th scope="col">Email</th><th scope="col">Role</th><th scope="col">Actions</th></tr></thead><tbody>
-        {filteredMembers.map((member) => <tr key={member.id}><td><div className="member-identity"><span className={`avatar${member.id === 1 ? ' avatar-admin' : ''}`}>{member.name.split(/\s+/).map((part) => part[0]).join('').slice(0, 2)}</span><span><strong>{member.name}</strong><small>{member.title}</small></span></div></td><td className="member-email">{member.email}</td><td><span className={`role-badge role-${member.role.toLowerCase()}`}><i />{member.role}</span></td>
-          <td className="action-cell"><div className="action-menu-wrap"><button aria-expanded={openMenu === member.id} aria-label={`Actions for ${member.name}`} className="icon-button row-menu-button" onClick={() => setOpenMenu(openMenu === member.id ? null : member.id)} type="button"><Symbol>more_vert</Symbol></button>
-            {openMenu === member.id && <div className="row-action-menu"><span className="menu-caption">Set role</span>{(['Admin', 'Member', 'Viewer'] as Role[]).map((role) => <button key={role} onClick={() => setMemberRole(member.id, role)} type="button">{role}{member.role === role && <Symbol>check</Symbol>}</button>)}<button onClick={() => { setNotice(`Showing CAD revision and checkout history for ${member.name}.`); setOpenMenu(null) }} type="button">View history</button><button className="remove-action" onClick={() => { if (window.confirm(`Remove ${member.name} from Refinery Unit 04-A?`)) setMembers((current) => current.filter((item) => item.id !== member.id)); setOpenMenu(null) }} type="button">Remove member</button></div>}
-          </div></td></tr>)}
-      </tbody></table></div> : <div className="roster-empty"><span className="application-icon"><Symbol>group</Symbol></span><h2>{members.length ? 'No team members found' : 'No members yet'}</h2><p>{members.length ? 'Try changing the search or role filter.' : 'Invite teammates to join this workspace.'}</p>{members.length === 0 && <button className="button-primary" onClick={() => setDialogOpen(true)} type="button"><Symbol>person_add</Symbol>Add a member</button>}</div>}
-      <footer className="roster-footer"><span>{filteredMembers.length} of {members.length} members</span><span>Workspace access is managed by your team administrator.</span></footer>
+
+      {members.length ? <section className="roster-card">
+        <div className="roster-tools">
+          <label className="roster-search"><Symbol>search</Symbol><input aria-label="Search team members" onChange={(event) => setQuery(event.target.value)} placeholder="Search by name or email" value={query} /></label>
+          <div aria-label="Filter by role" className="segmented" role="tablist">
+            {(['All', ...ROLES] as const).map((option) => <button aria-selected={roleFilter === option} className={roleFilter === option ? 'active' : ''} key={option} onClick={() => setRoleFilter(option)} role="tab" type="button">
+              {option}<span>{option === 'All' ? members.length : countFor(option)}</span>
+            </button>)}
+          </div>
+        </div>
+        {filteredMembers.length ? <div className="roster-table-wrap"><table className="roster-table"><thead><tr><th scope="col">Member</th><th scope="col">Email</th><th scope="col">Role</th><th scope="col">Status</th><th aria-label="Actions" scope="col" /></tr></thead><tbody>
+          {filteredMembers.map((member) => <tr key={member.id}>
+            <td><div className="member-identity"><Avatar name={member.name} /><span><strong>{member.name}</strong><small>{member.title}</small></span></div></td>
+            <td className="member-email">{member.email}</td>
+            <td><span className={`role-badge role-${member.role.toLowerCase()}`}><Symbol>{ROLE_DETAILS[member.role].icon}</Symbol>{member.role}</span></td>
+            <td><span className="status-pill"><i />Invite pending</span></td>
+            <td className="action-cell"><div className="action-menu-wrap"><button aria-expanded={openMenu === member.id} aria-label={`Actions for ${member.name}`} className="icon-button row-menu-button" onClick={() => setOpenMenu(openMenu === member.id ? null : member.id)} type="button"><Symbol>more_horiz</Symbol></button>
+              {openMenu === member.id && <div className="row-action-menu"><span className="menu-caption">Set role</span>{ROLES.map((role) => <button key={role} onClick={() => setMemberRole(member.id, role)} type="button"><span><Symbol>{ROLE_DETAILS[role].icon}</Symbol>{role}</span>{member.role === role && <Symbol className="menu-check">check</Symbol>}</button>)}<hr /><button onClick={() => { setNotice(`Showing CAD revision and checkout history for ${member.name}.`); setOpenMenu(null) }} type="button"><span><Symbol>history</Symbol>View history</span></button><button className="remove-action" onClick={() => { if (window.confirm(`Remove ${member.name} from Refinery Unit 04-A?`)) setMembers((current) => current.filter((item) => item.id !== member.id)); setOpenMenu(null) }} type="button"><span><Symbol>person_remove</Symbol>Remove member</span></button></div>}
+            </div></td>
+          </tr>)}
+        </tbody></table></div> : <div className="roster-no-match"><Symbol>search_off</Symbol><strong>No one matches that search</strong><span>Try another name or role filter.</span></div>}
+        <footer className="roster-footer"><span>Showing {filteredMembers.length} of {members.length}</span><span><Symbol>lock</Symbol>Access is managed by your workspace admin.</span></footer>
+      </section> : <section className="roster-empty">
+        <div aria-hidden="true" className="empty-avatars"><span className="avatar tone-0">AK</span><span className="avatar tone-2">RS</span><span className="avatar tone-4">MJ</span><span className="empty-plus"><Symbol>add</Symbol></span></div>
+        <h2>Build your review team</h2>
+        <p>HAZOP is a team sport. Invite your process engineers, operators and safety leads to review nodes and worksheets together.</p>
+        <button className="button-primary" onClick={() => setDialogOpen(true)} type="button"><Symbol>person_add</Symbol>Invite your first teammate</button>
+        <div className="role-cards">
+          {ROLES.map((role) => <article className={`role-card role-${role.toLowerCase()}`} key={role}><Symbol>{ROLE_DETAILS[role].icon}</Symbol><strong>{role}</strong><span>{ROLE_DETAILS[role].blurb}</span></article>)}
+        </div>
+      </section>}
     </main>
     {applicationOpened && <div className="application-workspace pdf-application" hidden={section !== 'Application'}><PidViewer embedded /></div>}
     {dialogOpen && section === 'Team' && <AddMemberDialog onClose={() => setDialogOpen(false)} onAdd={addMember} />}
   </DashboardFrame>
 }
 
-function DashboardFrame({ children, userName, section, onSectionChange, onSignOut, profileOpen, setProfileOpen }: { children: ReactNode; userName: string; section: Section; onSectionChange: (section: Section) => void; onSignOut: () => void; profileOpen: boolean; setProfileOpen: (open: boolean) => void }) {
+function DashboardFrame({ children, memberCount, userName, section, onSectionChange, onSignOut, profileOpen, setProfileOpen }: { children: ReactNode; memberCount: number; userName: string; section: Section; onSectionChange: (section: Section) => void; onSignOut: () => void; profileOpen: boolean; setProfileOpen: (open: boolean) => void }) {
+  const navItems: { id: Section; icon: string; label: string; hint: string }[] = [
+    { id: 'Team', icon: 'groups', label: 'Team', hint: `${memberCount}` },
+    { id: 'Application', icon: 'schema', label: 'P&ID Viewer', hint: 'App' },
+  ]
   return <div className="dashboard-shell">
-    <header className="dashboard-header"><div className="header-product"><Brand compact /><span className="header-product-title">Inklayer P&amp;ID</span></div>
-      <div className="profile-wrap"><button aria-expanded={profileOpen} className="profile-button" onClick={() => setProfileOpen(!profileOpen)} type="button"><span className="avatar profile-avatar">{initialsForName(userName)}</span><span><strong>{userName}</strong><small>Signed-in user</small></span><Symbol>arrow_drop_down</Symbol></button>
-        {profileOpen && <div className="profile-menu"><span>Signed in as {userName}</span><button onClick={() => { setProfileOpen(false); onSignOut() }} type="button"><Symbol>logout</Symbol>Sign out</button></div>}
+    <header className="dashboard-header">
+      <div className="header-product"><Brand compact /><span className="header-divider" /><nav aria-label="Breadcrumb" className="breadcrumb"><span>Workspace</span><Symbol>chevron_right</Symbol><strong>{section === 'Team' ? 'Team' : 'P&ID Viewer'}</strong></nav></div>
+      <div className="profile-wrap"><button aria-expanded={profileOpen} className="profile-button" onClick={() => setProfileOpen(!profileOpen)} type="button"><Avatar className="profile-avatar" name={userName} /><span><strong>{userName}</strong><small>Workspace owner</small></span><Symbol>expand_more</Symbol></button>
+        {profileOpen && <div className="profile-menu"><div className="profile-menu-head"><Avatar name={userName} /><span><strong>{userName}</strong><small>Signed in</small></span></div><button onClick={() => { setProfileOpen(false); onSignOut() }} type="button"><Symbol>logout</Symbol>Sign out</button></div>}
       </div>
     </header>
-    <div className="dashboard-body"><aside className="dashboard-sidebar">
-      <nav aria-label="Main navigation" className="sidebar-nav"><button aria-current={section === 'Team' ? 'page' : undefined} className={section === 'Team' ? 'selected' : ''} onClick={() => onSectionChange('Team')} type="button"><Symbol>groups</Symbol>Team</button><button aria-current={section === 'Application' ? 'page' : undefined} className={section === 'Application' ? 'selected' : ''} onClick={() => onSectionChange('Application')} type="button"><Symbol>schema</Symbol>Application</button></nav>
-    </aside><div className="dashboard-main">{children}</div></div>
+    <div className="dashboard-body">
+      <aside className="dashboard-sidebar">
+        <p className="sidebar-section-label">Workspace</p>
+        <nav aria-label="Main navigation" className="sidebar-nav">
+          {navItems.map((item) => <button aria-current={section === item.id ? 'page' : undefined} className={section === item.id ? 'selected' : ''} key={item.id} onClick={() => onSectionChange(item.id)} type="button">
+            <span className="nav-icon"><Symbol>{item.icon}</Symbol></span>{item.label}<span className="nav-hint">{item.hint}</span>
+          </button>)}
+        </nav>
+        {section === 'Team' && <div className="sidebar-card">
+          <span className="sidebar-card-icon"><Symbol>auto_awesome</Symbol></span>
+          <strong>Run your first study</strong>
+          <span>Open a P&amp;ID and let the agent divide it into HAZOP nodes.</span>
+          <button onClick={() => onSectionChange('Application')} type="button">Open viewer<Symbol>arrow_forward</Symbol></button>
+        </div>}
+      </aside>
+      <div className="dashboard-main">{children}</div>
+    </div>
   </div>
 }
 

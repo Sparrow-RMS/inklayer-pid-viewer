@@ -6,6 +6,7 @@ POST /agent/run?fileName=drawing.pdf&maxNodes=9 with the raw PDF as the body.
 The response is newline-delimited JSON, one event per line, so a run that
 takes minutes shows progress as it goes:
 
+    {"type": "run", "jobId": ..., "cached": true}    first; cached = the nodes are already on disk
     {"type": "progress", "message": "[step1] page 0: 6 tiles, ..."}
     {"type": "step", "step": "step1", "status": "computed"}
     {"type": "result", "jobId": ..., "document": <step3 or step3-consolidated>, ...}
@@ -92,6 +93,10 @@ async def _stream(data, name, max_nodes):
             # The drawing's thread: the same id the viewer and the chat use.
             thread_id = jobs.job_id_for(name, data)
             config = {**chat_agent.thread_config(thread_id), 'run_name': 'hazop-pipeline'}
+            # Lets the viewer tell a fresh run (minutes of model calls) from a replay of
+            # this drawing's saved nodes before any step reports.
+            artifact = 'step3-consolidated' if max_nodes else 'step3'
+            yield _line({'type': 'run', 'jobId': thread_id, 'cached': jobs.has_artifact(thread_id, artifact)})
 
             final = {}
             try:

@@ -19,6 +19,8 @@ export interface PageValidation {
 }
 
 export type PipelineEvent =
+  /** First event of every run: cached = this drawing's nodes are already on disk. */
+  | { type: 'run'; jobId: string; cached: boolean }
   | { type: 'progress'; message: string }
   | { type: 'step'; step: string; status: 'computed' | 'replayed' | 'cached' }
   | {

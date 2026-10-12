@@ -276,7 +276,7 @@ export default function HazopWorksheet({ node, studyId, rightOffset, onClose, on
         </header>
 
         {hazop && (
-          <details className="hazop-context">
+          <details className="hazop-context" open>
             <summary>Node context from the pipeline</summary>
             <dl>
               <dt>Design intent</dt>
