@@ -107,7 +107,7 @@ function Toolbar(props: {
   )
 }
 
-export default function App() {
+export default function App({ embedded = false }: { embedded?: boolean }) {
   const [pdfData, setPdfData] = useState<ArrayBuffer | null>(null)
   const [fileName, setFileName] = useState('')
   const [chatCollapsed, setChatCollapsed] = useState(false)
@@ -670,8 +670,12 @@ export default function App() {
           // initial scale). The chat panel is fixed-position and overlays on
           // top, so this just needs to leave room for it on the right.
           layoutStyle={{
-            width: chatCollapsed ? '100vw' : `calc(100vw - ${CHAT_WIDTH_PX}px)`,
-            height: '100vh',
+            width: embedded
+              ? chatCollapsed
+                ? 'calc(100vw - var(--viewer-sidebar-width, 0px))'
+                : `calc(100vw - var(--viewer-sidebar-width, 0px) - ${CHAT_WIDTH_PX}px)`
+              : chatCollapsed ? '100vw' : `calc(100vw - ${CHAT_WIDTH_PX}px)`,
+            height: embedded ? 'calc(100vh - var(--viewer-top-offset, 0px))' : '100vh',
           }}
           enableNativeAnnotations
           // Our own click-to-merge menu is the only interaction hazop nodes

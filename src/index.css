@@ -1,6 +1,10 @@
 :root {
-  color-scheme: light dark;
-  font: 14px/1.4 system-ui, 'Segoe UI', Roboto, sans-serif;
+  color-scheme: light;
+  font-family: Inter, 'Segoe UI', sans-serif;
+  font-size: 14px;
+  line-height: 1.4;
+  color: #0b1c30;
+  background: #f8f9ff;
 }
 
 html,
@@ -12,4 +16,14 @@ body,
 
 * {
   box-sizing: border-box;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
 }
