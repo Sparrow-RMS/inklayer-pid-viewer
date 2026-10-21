@@ -59,6 +59,34 @@
 }
 .viewer-toolbar button.primary:hover:not(:disabled) { border-color: #4646e0; background: linear-gradient(180deg, #7576ff 0%, #6162f7 100%); }
 
+/* The 3D views: highlighted so people find them. */
+.viewer-toolbar button.feature {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border-color: #ffc9a6;
+  color: #9a3a06;
+  background: linear-gradient(180deg, #fff8f2 0%, #ffefe3 100%);
+}
+.viewer-toolbar button.feature:hover:not(:disabled) { border-color: #f79a5c; background: #ffe7d6; }
+.viewer-toolbar-icon {
+  font-family: 'Material Symbols Outlined';
+  font-size: 17px;
+  font-feature-settings: 'liga';
+  line-height: 1;
+  -webkit-font-smoothing: antialiased;
+}
+.viewer-toolbar-new {
+  padding: 1px 5px;
+  border-radius: 999px;
+  color: #fff;
+  background: #e8590c;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
 .viewer-toolbar button.warn { border-color: #f5c56b; color: #8a5300; background: #fff8e8; }
 .viewer-toolbar button.warn:hover:not(:disabled) { border-color: #e9a93a; background: #fff2d6; }
 

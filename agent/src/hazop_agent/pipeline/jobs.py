@@ -9,6 +9,12 @@ re-running the same drawing lands in the same directory and reuses what is
 already there, while an edited drawing gets a fresh one.
 
 By default this is `data/jobs/` at the repo root (PIPELINE_JOBS_DIR moves it).
+
+Results depend on the model that produced them, so each provider has its own
+place in the job: OpenAI's (the default) at the top of the job directory, as
+before, and Claude's (PIPELINE_PROVIDER=anthropic) under `anthropic/` in it.
+Both share the source PDF. Running a drawing on Claude therefore never replays
+OpenAI's cached answers, and the two breakdowns sit side by side.
 The id scheme and artifact names are the old JS pipeline's (server/src/pipeline),
 which defaults to the same directory, so either can still read the other's jobs.
 """
@@ -18,6 +24,8 @@ import os
 import re
 from datetime import datetime, timezone
 from pathlib import Path
+
+from .llm import provider
 
 # agent/src/hazop_agent/pipeline/jobs.py -> repo root
 DEFAULT_JOBS_ROOT = Path(__file__).resolve().parents[4] / 'data' / 'jobs'
@@ -46,8 +54,15 @@ def job_dir(job_id):
     return jobs_root() / job_id
 
 
+def results_dir(job_id, provider_name=None):
+    """Where a provider's artifacts and manifest live (see the module docstring);
+    the current provider's unless one is named."""
+    name = provider_name or provider()
+    return job_dir(job_id) if name == 'openai' else job_dir(job_id) / name
+
+
 def ensure_job(job_id, **meta):
-    d = job_dir(job_id)
+    d = results_dir(job_id)
     d.mkdir(parents=True, exist_ok=True)
     existing = read_manifest(job_id)
     manifest = {'jobId': job_id, 'createdAt': existing.get('createdAt', now_iso()), **existing, **meta, 'updatedAt': now_iso()}
@@ -55,13 +70,13 @@ def ensure_job(job_id, **meta):
     return d
 
 
-def read_manifest(job_id):
-    path = job_dir(job_id) / 'job.json'
+def read_manifest(job_id, provider_name=None):
+    path = results_dir(job_id, provider_name) / 'job.json'
     return json.loads(path.read_text()) if path.exists() else {}
 
 
 def artifact_path(job_id, name):
-    return job_dir(job_id) / f'{name}.json'
+    return results_dir(job_id) / f'{name}.json'
 
 
 def has_artifact(job_id, name):
@@ -69,7 +84,7 @@ def has_artifact(job_id, name):
 
 
 def write_artifact(job_id, name, data):
-    job_dir(job_id).mkdir(parents=True, exist_ok=True)
+    results_dir(job_id).mkdir(parents=True, exist_ok=True)
     path = artifact_path(job_id, name)
     path.write_text(json.dumps(data, indent=2, ensure_ascii=False))
     return path
@@ -100,8 +115,7 @@ def list_jobs():
     for d in root.iterdir():
         if not d.is_dir():
             continue
-        manifest_path = d / 'job.json'
-        manifest = json.loads(manifest_path.read_text()) if manifest_path.exists() else {'jobId': d.name}
-        artifacts = sorted(p.stem for p in d.glob('*.json') if p.name != 'job.json')
+        manifest = read_manifest(d.name) or {'jobId': d.name}
+        artifacts = sorted(p.stem for p in results_dir(d.name).glob('*.json') if p.name != 'job.json')
         jobs.append({**manifest, 'artifacts': artifacts})
     return sorted(jobs, key=lambda j: str(j.get('updatedAt', '')), reverse=True)

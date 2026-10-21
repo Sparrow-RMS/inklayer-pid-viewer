@@ -15,14 +15,13 @@ input from there rather than from disk.
 Progress events from the step modules go to LangGraph's custom stream
 (`stream_mode="custom"`), so a caller sees tile-by-tile progress live.
 """
-import os
 import time
 from pathlib import Path
 
 from langgraph.config import get_stream_writer
 
 from ..pipeline import documents as study_docs
-from ..pipeline import jobs, network
+from ..pipeline import jobs, llm, network
 from ..pipeline.pdf import load_pdf
 from ..pipeline.step1 import extract as step1
 from ..pipeline.sheet import extract as sheet
@@ -87,8 +86,8 @@ async def _run_step(state: HazopState, *, step, artifact, compute, replay, summa
     elif not stale and have and (cache_valid is None or cache_valid(previous)):
         result, changed, status = previous, False, 'cached'
     else:
-        if not os.environ.get('OPENAI_API_KEY'):
-            return {'failure': f'{step} needs a model call but OPENAI_API_KEY is not set (agent/.env)'}
+        if not llm.has_api_key():
+            return {'failure': f'{step} needs a model call but {llm.api_key_name()} is not set (agent/.env)'}
         started = time.monotonic()
         full = await compute()
         raw = full.pop('raw')
@@ -99,7 +98,8 @@ async def _run_step(state: HazopState, *, step, artifact, compute, replay, summa
             raw_doc = {'fileName': full['fileName'], 'pageCount': full['pageCount'], 'pages': raw}
         jobs.write_artifact(job_id, raw_artifact, raw_doc)
         jobs.write_artifact(job_id, artifact, full)
-        jobs.ensure_job(job_id, lastStep=step if step != 'consolidate' else 'step3-consolidate')
+        # model: which one produced this provider's results, for pipeline/compare.py.
+        jobs.ensure_job(job_id, lastStep=step if step != 'consolidate' else 'step3-consolidate', model=llm.model_name())
         result, changed, status = full, True, 'computed'
 
     issues, failure = check(result)
@@ -145,7 +145,9 @@ async def ingest(state: HazopState):
         return {'failure': 'pass pdf_path (a PDF) or job_id (an existing job)'}
     if not jobs.job_dir(job_id).exists():
         return {'failure': f'no job {job_id} under {jobs.jobs_root()}'}
-    return _with_documents(job_id, {'file_name': jobs.read_manifest(job_id).get('fileName', 'document.pdf'), 'upstream_changed': False})
+    # A provider's first run on a job starts with no manifest of its own; the name is the drawing's either way.
+    file_name = jobs.read_manifest(job_id).get('fileName') or jobs.read_manifest(job_id, 'openai').get('fileName', 'document.pdf')
+    return _with_documents(job_id, {'file_name': file_name, 'upstream_changed': False})
 
 
 async def extract(state: HazopState):

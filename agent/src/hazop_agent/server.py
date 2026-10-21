@@ -18,6 +18,9 @@ directory as the CLI, so uploading a drawing again reuses its cached steps.
 
 The HAZOP worksheet routes live in worksheets.py, the study package (supporting
 documents and readiness checklist) in study_package.py; both under /agent/hazop/.
+The 3D plant view (Claude draws the P&ID as a Three.js page) is in plant3d.py,
+under /agent/plant3d. The 3D nodes view (the pipeline's own entities and
+pipes in 3D, so nodes map onto it) is in plant_scene.py, under /agent/plant-scene.
 
 Threads: a drawing's job id is its thread id. A pipeline run and the chat
 assistant (chat.py) run under the same thread, so they share one
@@ -34,7 +37,6 @@ The run result's document has the reviewer's saved edits applied (pipeline/edits
 """
 import asyncio
 import json
-import os
 import tempfile
 from pathlib import Path
 
@@ -43,7 +45,9 @@ from fastapi.responses import StreamingResponse
 
 from . import chat as chat_agent
 from .graph.builder import graph
-from .pipeline import edits, jobs
+from .pipeline import edits, jobs, llm
+from .plant3d import router as plant3d_router
+from .plant_scene import router as plant_scene_router
 from .study_package import router as study_package_router
 from .worksheets import router as worksheets_router
 
@@ -53,11 +57,14 @@ _run_lock = asyncio.Lock()
 app = FastAPI(title='hazop-agent')
 app.include_router(worksheets_router)
 app.include_router(study_package_router)
+app.include_router(plant3d_router)
+app.include_router(plant_scene_router)
 
 
 @app.get('/agent/health')
 async def health():
-    return {'ok': True, 'hasApiKey': bool(os.environ.get('OPENAI_API_KEY')), 'busy': _run_lock.locked()}
+    return {'ok': True, 'hasApiKey': llm.has_api_key(), 'provider': llm.provider(), 'model': llm.model_name(),
+            'busy': _run_lock.locked()}
 
 
 @app.post('/agent/run')

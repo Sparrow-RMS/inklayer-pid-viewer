@@ -40,13 +40,13 @@ function LoginScreen({ onSignIn }: { onSignIn: (name: string) => void }) {
       <div aria-hidden="true" className="showcase-grid" />
       <header className="showcase-header">
         <div aria-label="Sparrow logo placeholder" className="sparrow-logo-slot" role="img">SPARROW LOGO</div>
-        <span className="showcase-pill"><i />AI node segmentation is live</span>
+        <span className="showcase-pill"><i />New · Your P&amp;ID as a 3D shop floor</span>
       </header>
 
       <div className="login-showcase-copy">
         <p className="showcase-kicker">Process safety · HAZOP</p>
         <h2>HAZOP studies,<br /><span>drafted in hours.</span></h2>
-        <p>Drop in a P&amp;ID. Inklayer divides it into nodes, drafts every worksheet and keeps your team reviewing in one place.</p>
+        <p>Drop in a P&amp;ID. Inklayer divides it into nodes, drafts every worksheet, turns the drawing into a 3D model of your shop floor and keeps your team reviewing in one place.</p>
       </div>
 
       <figure aria-hidden="true" className="showcase-preview">
@@ -74,6 +74,7 @@ function LoginScreen({ onSignIn }: { onSignIn: (name: string) => void }) {
         <li><Symbol>account_tree</Symbol><span><strong>Auto nodes</strong>Whole pipe runs, painted on the drawing</span></li>
         <li><Symbol>table_chart</Symbol><span><strong>Draft worksheets</strong>Deviations, causes and safeguards</span></li>
         <li><Symbol>forum</Symbol><span><strong>Review together</strong>Edit by hand or through chat</span></li>
+        <li className="showcase-point-new"><Symbol>view_in_ar</Symbol><span><strong>3D shop floor <em>New</em></strong>Walk the plant in 3D, every node in colour</span></li>
       </ul>
     </section>
 
@@ -262,7 +263,7 @@ function DashboardFrame({ children, memberCount, userName, section, onSectionCha
         {section === 'Team' && <div className="sidebar-card">
           <span className="sidebar-card-icon"><Symbol>auto_awesome</Symbol></span>
           <strong>Run your first study</strong>
-          <span>Open a P&amp;ID and let the agent divide it into HAZOP nodes.</span>
+          <span>Open a P&amp;ID and let the agent divide it into HAZOP nodes, then see them on a 3D model of your shop floor.</span>
           <button onClick={() => onSectionChange('Application')} type="button">Open viewer<Symbol>arrow_forward</Symbol></button>
         </div>}
       </aside>

@@ -5,6 +5,7 @@ const STEPS = [
   { icon: 'upload_file', title: 'Open a P&ID', text: 'Any PDF drawing, one sheet or many.' },
   { icon: 'account_tree', title: 'Divide into nodes', text: 'The agent paints whole pipe runs as HAZOP nodes.' },
   { icon: 'table_chart', title: 'Draft worksheets', text: 'Deviations, causes, consequences and safeguards.' },
+  { icon: 'view_in_ar', title: 'See it in 3D', text: 'Your shop floor as a 3D model, every node in colour.', isNew: true },
 ]
 
 function Icon({ name }: { name: string }) {
@@ -30,7 +31,7 @@ export default function UploadScreen({ onFile }: { onFile: (file: File) => void 
         <header className="upload-heading">
           <span className="upload-eyebrow"><i />New study</span>
           <h1>Start with a P&amp;ID</h1>
-          <p>Drop a drawing to divide it into HAZOP nodes and draft every worksheet.</p>
+          <p>Drop a drawing to divide it into HAZOP nodes, draft every worksheet and see your shop floor in 3D.</p>
         </header>
 
         <div
@@ -58,7 +59,11 @@ export default function UploadScreen({ onFile }: { onFile: (file: File) => void 
           {STEPS.map((step, i) => (
             <li key={step.title}>
               <span className={`upload-step-icon step-${i}`}><Icon name={step.icon} /></span>
-              <span><small>Step {i + 1}</small><strong>{step.title}</strong>{step.text}</span>
+              <span>
+                <small>Step {i + 1}{'isNew' in step && <em className="upload-new">New</em>}</small>
+                <strong>{step.title}</strong>
+                {step.text}
+              </span>
             </li>
           ))}
         </ol>

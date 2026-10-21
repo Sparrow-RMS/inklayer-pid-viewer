@@ -23,6 +23,7 @@ from dotenv import load_dotenv
 from .graph.builder import graph
 from .graph.state import STEPS
 from .pipeline import jobs
+from .pipeline.llm import PROVIDERS, model_name, provider as current_provider
 
 _AGENT_ROOT = Path(__file__).resolve().parents[2]
 
@@ -109,7 +110,8 @@ async def _run(args):
             final = chunk
 
     print(f"\njob {final.get('job_id')} — {final.get('file_name')}")
-    print(f"artifacts: {jobs.job_dir(final['job_id']) if final.get('job_id') else '—'}")
+    print(f"model: {current_provider()} / {model_name()}")
+    print(f"artifacts: {jobs.results_dir(final['job_id']) if final.get('job_id') else '—'}")
     print(json.dumps(final.get('summaries', {}), indent=2))
     for issue in final.get('issues', []):
         print(f"  ! {issue['step']} page {issue.get('page', '?')}: {issue['problem']}")
@@ -147,8 +149,11 @@ async def _worksheet(args):
 def main(argv=None):
     parser = argparse.ArgumentParser(prog='hazop-agent', description='P&ID -> HAZOP nodes, as a LangGraph agent.')
     sub = parser.add_subparsers(dest='command', required=True)
+    # Which model API the pipeline calls; overrides PIPELINE_PROVIDER in .env.
+    provider = argparse.ArgumentParser(add_help=False)
+    provider.add_argument('--provider', choices=PROVIDERS, help='model API for the pipeline (default: PIPELINE_PROVIDER, else openai)')
 
-    run = sub.add_parser('run', help='run the pipeline graph on a PDF or an existing job id')
+    run = sub.add_parser('run', parents=[provider], help='run the pipeline graph on a PDF or an existing job id')
     run.add_argument('target', help='path to a PDF, or a job id under data/jobs')
     run.add_argument('--max-nodes', type=int, help='consolidate each page to at most this many nodes')
     run.add_argument('--min-relatedness', type=float, help='below this, a consolidation merge is flagged forced (default 0.3)')
@@ -166,7 +171,7 @@ def main(argv=None):
     run.add_argument('--max-pairs-per-call', type=int, default=40)
     run.add_argument('--no-repair', action='store_true', help='step 3: skip the repair pass when validation finds errors')
 
-    ws = sub.add_parser('worksheet', help="step 4: draft one node's HAZOP worksheet")
+    ws = sub.add_parser('worksheet', parents=[provider], help="step 4: draft one node's HAZOP worksheet")
     ws.add_argument('job', help='job id under data/jobs')
     ws.add_argument('node', help='node id, e.g. p0-node-1')
     ws.add_argument('--save', action='store_true', help="add the draft to the node's worksheet (skips deviations already there)")
@@ -176,13 +181,25 @@ def main(argv=None):
     samples.add_argument('--force', action='store_true', help='read every report again, not only new or changed ones')
 
     sub.add_parser('graph', help='print the graph as Mermaid')
-    sub.add_parser('list', help='list jobs on disk')
-    serve = sub.add_parser('serve', help='serve the graph over HTTP for the viewer')
+    sub.add_parser('list', parents=[provider], help='list jobs on disk')
+    cmp = sub.add_parser('compare', help="compare OpenAI's and Claude's node breakdowns of one drawing")
+    cmp.add_argument('job', help='job id under data/jobs, run on both providers')
+    cmp.add_argument('--consolidated', action='store_true', help='compare the consolidated (max nodes) breakdowns')
+    cmp.add_argument('--json', action='store_true', help='print the comparison as JSON')
+    serve = sub.add_parser('serve', parents=[provider], help='serve the graph over HTTP for the viewer')
     serve.add_argument('--host', default='127.0.0.1')
     serve.add_argument('--port', type=int, default=int(os.environ.get('AGENT_PORT', 4002)))
 
     args = parser.parse_args(argv)
     _load_env()
+    if getattr(args, 'provider', None):
+        os.environ['PIPELINE_PROVIDER'] = args.provider
+
+    if args.command == 'compare':
+        from .pipeline.compare import compare, format_report
+        report = compare(args.job, 'step3-consolidated' if args.consolidated else 'step3')
+        print(json.dumps(report, indent=2) if args.json else format_report(report))
+        return 1 if report.get('missing') else 0
 
     if args.command == 'graph':
         print(graph.get_graph().draw_mermaid())

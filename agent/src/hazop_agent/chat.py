@@ -19,7 +19,7 @@ from langchain_openai import ChatOpenAI
 from langgraph.prebuilt import create_react_agent
 
 from .pipeline import edits, jobs
-from .pipeline.llm import model_name
+from .pipeline.llm import openai_model_name
 
 # Tools that change the node breakdown: after one runs, the viewer repaints.
 EDIT_TOOLS = {'merge_nodes', 'rename_node', 'undo_last_edit'}
@@ -196,7 +196,7 @@ async def get_agent():
             path.parent.mkdir(parents=True, exist_ok=True)
             saver = AsyncSqliteSaver(await aiosqlite.connect(str(path)))
             await saver.setup()
-            model = ChatOpenAI(model=model_name(), use_responses_api=True)
+            model = ChatOpenAI(model=openai_model_name(), use_responses_api=True)
             # a RunnableLambda, so the prompt gets the config (the thread = the drawing)
             _agents[path] = create_react_agent(model, TOOLS, prompt=RunnableLambda(_prompt), checkpointer=saver, name='hazop-chat')
     return _agents[path]

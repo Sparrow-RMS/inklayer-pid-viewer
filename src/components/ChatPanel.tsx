@@ -113,6 +113,8 @@ export type ProposedNode =
       bbox: BBox
       routes: RouteSegment[]
       entityCount: number
+      /** Step 1 ids of the node's members, for the 3D nodes view (PlantNodes3D). */
+      entityIds?: string[]
       processCount: number
       /** Present on nodes built by the rules-based step 3. */
       hazop?: HazopDetails

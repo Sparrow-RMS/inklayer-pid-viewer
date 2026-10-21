@@ -1,12 +1,15 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { PdfAnnotator } from 'inklayer-react'
 import 'inklayer-react/style'
 import ChatPanel, { makeMessageId, type ChatMessage, type NodeStatus, type ProposedNode, type ReviewedNode } from './components/ChatPanel'
 import NodeMergeMenu, { type MergeTarget } from './components/NodeMergeMenu'
 import HazopWorksheet from './components/HazopWorksheet'
 import StudyPackage from './components/StudyPackage'
+import Plant3DView from './components/Plant3DView'
 import UploadScreen from './components/UploadScreen'
 import PipelineRunDialog, { type PipelineRun } from './components/PipelineRunDialog'
+// Three.js is only downloaded when the window is first opened.
+const PlantNodes3D = lazy(() => import('./components/PlantNodes3D'))
 import './components/ViewerToolbar.css'
 import { getPackage, type StudyPackage as Package } from './lib/studyApi'
 import { getSummary, studyIdFor, worksheetNodeId } from './lib/hazopApi'
@@ -39,6 +42,10 @@ function Toolbar(props: {
   onLoadPipelineNodes: () => void
   onRunPipeline: () => void
   onOpenPackage: () => void
+  onOpen3d: () => void
+  onOpenNodes3d: () => void
+  /** True while Claude is still drawing the 3D view. */
+  is3dBusy: boolean
   /** e.g. "3/7"; null until the package has loaded. */
   packageProgress: { provided: number; total: number } | null
   maxNodes: number | null
@@ -88,6 +95,18 @@ function Toolbar(props: {
         className={props.packageProgress && props.packageProgress.provided < props.packageProgress.total ? 'warn' : undefined}
       >
         Study package{props.packageProgress ? ` (${props.packageProgress.provided}/${props.packageProgress.total})` : ''}
+      </button>
+      {/* Claude draws the drawing as a 3D plant (agent/src/hazop_agent/plant3d.py). */}
+      <button className="feature" onClick={props.onOpen3d} title="Show this P&ID as an interactive 3D model of the plant, drawn by Claude">
+        <span aria-hidden="true" className="viewer-toolbar-icon">view_in_ar</span>
+        {props.is3dBusy ? '3D view (building…)' : '3D view'}
+        <span className="viewer-toolbar-new">New</span>
+      </button>
+      {/* The pipeline's own items and pipes in 3D, coloured by HAZOP node (agent/src/hazop_agent/plant_scene.py). */}
+      <button className="feature" onClick={props.onOpenNodes3d} title="Show the HAZOP nodes on a 3D model built from the pipeline's results">
+        <span aria-hidden="true" className="viewer-toolbar-icon">deployed_code</span>
+        Nodes in 3D
+        <span className="viewer-toolbar-new">New</span>
       </button>
       <button onClick={props.onNewFile}>New file</button>
       <button onClick={() => props.save()}>Save</button>
@@ -145,6 +164,8 @@ export default function App({ embedded = false }: { embedded?: boolean }) {
   // repaint (accept/reject/undo/merge) reuses it, so InkLayer restyles the
   // same underlying shape(s) in place instead of drawing new ones.
   const paintedNodeIdPrefix = useRef(new Map<string, string>())
+  // Ids of painted shapes whose node has since been cleared (see clearPaintedNodes).
+  const retiredNodeIds = useRef(new Set<string>())
   // Monotonically increasing, never reused within a session — so undoing and
   // re-accepting a node doesn't collide with another node's color.
   const nextColorIndexRef = useRef(0)
@@ -166,6 +187,11 @@ export default function App({ embedded = false }: { embedded?: boolean }) {
   // Supporting documents for this drawing and their readiness checklist.
   const [studyPackage, setStudyPackage] = useState<Package | null>(null)
   const [packageOpen, setPackageOpen] = useState(false)
+  const [plant3dOpen, setPlant3dOpen] = useState(false)
+  const [plant3dBusy, setPlant3dBusy] = useState(false)
+  const closePlant3d = useCallback(() => setPlant3dOpen(false), [])
+  const [nodes3dOpen, setNodes3dOpen] = useState(false)
+  const closeNodes3d = useCallback(() => setNodes3dOpen(false), [])
 
   // Called wherever the open PDF changes, so nothing from the last drawing lingers.
   const resetWorksheets = useCallback(() => {
@@ -174,6 +200,8 @@ export default function App({ embedded = false }: { embedded?: boolean }) {
     setWorksheetCounts({})
     setStudyPackage(null)
     setPackageOpen(false)
+    setPlant3dOpen(false)
+    setNodes3dOpen(false)
   }, [])
 
   useEffect(() => {
@@ -242,10 +270,24 @@ export default function App({ embedded = false }: { embedded?: boolean }) {
   // drawn by hand (identified by id NOT being one of ours, so we don't
   // double-count our own shapes), then remounts to show it.
   const syncCanvas = useCallback(() => {
-    const humanDrawn = (annotatorApiRef.current?.getAnnotations() ?? []).filter((a) => !findKeyForAnnotationId(a.id))
+    const humanDrawn = (annotatorApiRef.current?.getAnnotations() ?? []).filter(
+      (a) => !findKeyForAnnotationId(a.id) && !retiredNodeIds.current.has(a.id),
+    )
     setCanvasAnnotations([...humanDrawn, ...Array.from(paintedNodes.current.values()).flat()])
     setAnnotatorKey((k) => k + 1)
   }, [findKeyForAnnotationId])
+
+  // Forgets every painted node, numbered from 1 again. Their shapes are still
+  // on the canvas until the next remount, and once they're out of
+  // paintedNodes syncCanvas would keep them as hand-drawn, so their ids are
+  // retired first.
+  const clearPaintedNodes = useCallback(() => {
+    for (const annotations of paintedNodes.current.values()) for (const a of annotations) retiredNodeIds.current.add(a.id)
+    paintedNodes.current.clear()
+    paintedNodeIdPrefix.current.clear()
+    nextColorIndexRef.current = 0
+    nextNodeNumberRef.current = 1
+  }, [])
 
   const pipelineFileInputRef = useRef<HTMLInputElement>(null)
 
@@ -257,10 +299,15 @@ export default function App({ embedded = false }: { embedded?: boolean }) {
   const handleFile = useCallback((file: File) => {
     file.arrayBuffer().then((buf) => {
       resetWorksheets()
+      // Nothing painted on the last drawing belongs on this one.
+      clearPaintedNodes()
+      setCanvasAnnotations([])
+      setMergeMenu(null)
+      setMessages((prev) => prev.filter((m) => m.kind !== 'nodes'))
       setPdfData(buf)
       setFileName(file.name)
     })
-  }, [resetWorksheets])
+  }, [resetWorksheets, clearPaintedNodes])
 
   // node.shapeType picks the converter: 'hazop' can produce several
   // annotations (one per traced route it clustered), 'path'/'rect' always
@@ -356,7 +403,7 @@ export default function App({ embedded = false }: { embedded?: boolean }) {
   // JSON shape onto the frontend's node type. Shared by the file loader, the
   // agent run and the chat.
   const paintPipelineDocument = useCallback(
-    async (document: unknown, source: string, replace = false) => {
+    async (document: unknown, source: string, replace = false, announce = !replace) => {
       if (!pdfData) return
       if (!isPipelineNodeFile(document)) {
         addAssistantText(`${source} doesn't look like a step3.json / step3-consolidated.json export (expected { pages: [{ pageIndex, nodes }] }).`)
@@ -378,24 +425,22 @@ export default function App({ embedded = false }: { embedded?: boolean }) {
       setPageDims((prev) => ({ ...prev, ...dimsMap }))
 
       if (replace) {
-        // The breakdown changed (an edit from the chat): the new one replaces
-        // every node card and painted node, numbered from 1 again.
-        paintedNodes.current.clear()
-        paintedNodeIdPrefix.current.clear()
-        nextColorIndexRef.current = 0
-        nextNodeNumberRef.current = 1
+        // The breakdown changed (an edit from the chat, or a new pipeline
+        // run): the new one replaces every node card and painted node,
+        // numbered from 1 again.
+        clearPaintedNodes()
       }
       const messageId = makeMessageId()
       const reviewedNodes = paintProposedNodes(nodes, messageId, dimsMap)
       setMessages((prev) => [
         ...(replace ? prev.filter((m) => m.kind !== 'nodes') : prev),
-        ...(replace
+        ...(!announce
           ? []
           : [{ id: makeMessageId(), role: 'assistant' as const, kind: 'text' as const, text: `Loaded ${nodes.length} node${nodes.length === 1 ? '' : 's'} from ${source}.` }]),
         { id: messageId, role: 'assistant', kind: 'nodes', nodes: reviewedNodes },
       ])
     },
-    [pdfData, paintProposedNodes, addAssistantText],
+    [pdfData, paintProposedNodes, addAssistantText, clearPaintedNodes],
   )
 
   const handleLoadPipelineNodes = useCallback(
@@ -501,7 +546,8 @@ export default function App({ embedded = false }: { embedded?: boolean }) {
       if (!outcome.result) throw new Error('the run ended without a result')
       const { document, source, report } = outcome.result
       setStatus(report ? `Pipeline finished.\n${report}` : 'Pipeline finished.')
-      await paintPipelineDocument(document, source)
+      await paintPipelineDocument(document, source, true, true)
+      addAssistantText('Tip: see these nodes on a 3D model of your shop floor with "Nodes in 3D", or open "3D view" for a 3D model of the whole plant drawn from this P&ID.')
       updateRun(() => ({ phase: 'done', finishedAt: Date.now() }))
     } catch (err) {
       updateRun(() => ({ phase: 'failed', finishedAt: Date.now(), error: (err as Error).message }))
@@ -509,7 +555,7 @@ export default function App({ embedded = false }: { embedded?: boolean }) {
     } finally {
       setIsBusy(false)
     }
-  }, [pdfData, fileName, maxNodes, isBusy, paintPipelineDocument])
+  }, [pdfData, fileName, maxNodes, isBusy, paintPipelineDocument, addAssistantText])
 
   const handleNodeStatusChange = useCallback(
     (messageId: string, nodeIndex: number, node: ReviewedNode, status: NodeStatus) => {
@@ -628,6 +674,9 @@ export default function App({ embedded = false }: { embedded?: boolean }) {
     [getNodeByKey, pageDims, syncCanvas, annotationsForNode],
   )
 
+  // Every node on the cards, for the 3D nodes window.
+  const allNodes = useMemo(() => messages.flatMap((m) => (m.kind === 'nodes' ? m.nodes : [])), [messages])
+
   if (!pdfData) return <UploadScreen onFile={handleFile} />
 
   return (
@@ -659,7 +708,6 @@ export default function App({ embedded = false }: { embedded?: boolean }) {
               : chatCollapsed ? '100vw' : `calc(100vw - ${CHAT_WIDTH_PX}px)`,
             height: embedded ? 'calc(100vh - var(--viewer-top-offset, 0px))' : '100vh',
           }}
-          enableNativeAnnotations
           // Our own click-to-merge menu is the only interaction hazop nodes
           // get; InkLayer's native move/resize/delete would otherwise fight
           // it for the same click and could desync from paintedNodes.
@@ -686,6 +734,9 @@ export default function App({ embedded = false }: { embedded?: boolean }) {
                 onLoadPipelineNodes={() => pipelineFileInputRef.current?.click()}
                 onRunPipeline={handleRunPipeline}
                 onOpenPackage={() => setPackageOpen(true)}
+                onOpen3d={() => setPlant3dOpen(true)}
+                onOpenNodes3d={() => setNodes3dOpen(true)}
+                is3dBusy={plant3dBusy}
                 packageProgress={studyPackage && { provided: studyPackage.checklist.provided, total: studyPackage.checklist.total }}
                 maxNodes={maxNodes}
                 onMaxNodesChange={setMaxNodes}
@@ -757,6 +808,28 @@ export default function App({ embedded = false }: { embedded?: boolean }) {
           packageMissing={studyPackage ? studyPackage.checklist.missing : null}
           onOpenPackage={() => setPackageOpen(true)}
         />
+      )}
+      <Plant3DView
+        // One per drawing: a new file starts over (and aborts a generation in flight).
+        key={studyId ?? 'pending'}
+        pdf={pdfData}
+        fileName={fileName}
+        open={plant3dOpen && !!studyId}
+        rightOffset={chatCollapsed ? 0 : CHAT_WIDTH_PX}
+        onClose={closePlant3d}
+        onBusyChange={setPlant3dBusy}
+      />
+      {nodes3dOpen && (
+        <Suspense fallback={null}>
+          <PlantNodes3D
+            key={studyId ?? 'pending'}
+            jobId={studyId}
+            fileName={fileName}
+            nodes={allNodes}
+            rightOffset={chatCollapsed ? 0 : CHAT_WIDTH_PX}
+            onClose={closeNodes3d}
+          />
+        </Suspense>
       )}
       {packageOpen && (
         <StudyPackage

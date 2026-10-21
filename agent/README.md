@@ -68,6 +68,55 @@ run finishes. The endpoint streams newline-delimited JSON; see
 `src/hazop_agent/server.py`. It uses the same job directory as the CLI, so
 opening the same drawing again reuses its cached steps.
 
+## OpenAI or Claude
+
+`PIPELINE_PROVIDER=anthropic` in `.env` (or `--provider anthropic` on `run`)
+sends every pipeline call to Claude instead of OpenAI; see `.env.example` for
+its settings. Each provider's results live in their own place in the job
+(OpenAI's at the top of the job directory, Claude's under `anthropic/`), so
+switching never replays the other's cached answers. To check one against the
+other on a drawing, run it on both and compare:
+
+```bash
+uv run hazop-agent run drawing.pdf                          # OpenAI
+uv run hazop-agent run <jobId> --provider anthropic         # Claude, same drawing
+uv run hazop-agent compare <jobId>                          # side by side
+```
+
+`compare` lines the two node breakdowns up by tag and reports, per page, the
+tags each read (and how many match the PDF's text layer), node counts, Step 7
+validation findings, and each node pairing with the tags only one put in it.
+It measures agreement, not correctness: there is no answer key.
+
+The viewer uses whichever provider the server was started with
+(`GET /agent/health` says which); restart it after changing it. Worksheets are
+stored by node id (`p0-node-1`, ...), which both providers use, so draft
+worksheets on one provider at a time.
+
+## 3D plant view
+
+**3D view** in the viewer's toolbar sends the open PDF to Claude
+(`src/hazop_agent/plant3d.py`, `POST /agent/plant3d`), which writes the plant
+as one self-contained Three.js page: equipment, piping coloured by service,
+tags, legend, click-to-inspect. It needs `ANTHROPIC_API_KEY` in `.env`
+(`PLANT3D_MODEL` overrides the default `claude-opus-5-5`). The page is cached
+as `plant3d.html` in the drawing's job directory, so reopening the drawing
+shows it again for free; **Regenerate** redraws it. The viewer shows it in an
+iframe sandboxed to scripts only.
+
+## Nodes in 3D
+
+**Nodes in 3D** in the toolbar shows the HAZOP nodes on a 3D model built from
+the pipeline's own results (`src/hazop_agent/plant_scene.py`,
+`/agent/plant-scene/{jobId}`), separate from the 3D view above. Every item is a
+step 1 entity and every pipe a traced span, laid out where the drawing puts
+them, so a node's `entityIds` and route spans are exactly its objects: the
+viewer (`src/lib/plantScene3d.ts`) colours them like the 2D nodes, follows
+merges, and flies to a node when it is picked. Claude only sizes the
+equipment (shape, real size, elevation; one call per page, cached as
+`plant-scene-forms` for that step 1 run); until it has, sizes come from the
+type text. It needs the pipeline to have run on the drawing first.
+
 `langgraph.json` is included, so `langgraph dev` opens the graph in LangGraph Studio.
 
 ## Tracing

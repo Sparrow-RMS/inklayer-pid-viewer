@@ -27,6 +27,7 @@ const COMPANY = {
 const SLIDES = [
   { icon: 'account_tree', title: 'Nodes, not guesswork', text: 'Inklayer traces whole pipe runs and paints each HAZOP node directly on your drawing.' },
   { icon: 'table_chart', title: 'Worksheets in minutes', text: 'Deviations, causes, consequences, safeguards and recommendations, drafted for every node.' },
+  { icon: 'view_in_ar', title: 'Your shop floor in 3D', text: 'Open 3D view to walk the plant drawn from this P&ID, or Nodes in 3D to see every HAZOP node on it.' },
   { icon: 'forum', title: 'Your team stays in charge', text: 'Accept, merge and rename nodes by hand or just ask the assistant.' },
   { icon: 'domain', title: `Built by ${COMPANY.name}`, text: COMPANY.about },
 ]

@@ -114,6 +114,7 @@ export function pipelineNodesToProposedNodes(file: PipelineNodeFile): ProposedNo
         bbox: node.bbox,
         routes: node.routes,
         entityCount: node.entityIds.length,
+        entityIds: node.entityIds,
         processCount: node.memberCount ?? node.processIds?.length ?? 1,
         hazop: node.hazop && normalizeHazop(node.hazop),
       }),
