@@ -58,6 +58,21 @@ def union_bboxes(boxes):
     return acc
 
 
+# Sheet data, not drawn process: equipment-list rows and table cells sit in
+# the sheet's tables, and labels / notes are loose text whose box can be a
+# table cell. They stay members of a process, but a process or node box
+# grown over them covers the title block instead of the pipework.
+SHEET_DATA_CATEGORIES = frozenset({'equipment_list_row', 'label', 'note'})
+
+
+def drawn_bbox(entities):
+    """Union of the entities' boxes, leaving out sheet data; falls back to
+    every box when the members are all sheet data."""
+    entities = list(entities)
+    drawn = [e for e in entities if e['category'] not in SHEET_DATA_CATEGORIES]
+    return union_bboxes(e['bbox'] for e in (drawn or entities))
+
+
 def bbox_area(b):
     return max(0, b['width']) * max(0, b['height']) if b else 0
 

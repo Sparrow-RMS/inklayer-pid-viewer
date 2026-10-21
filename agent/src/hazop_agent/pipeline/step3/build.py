@@ -13,7 +13,7 @@ of its entities' real geometry, as in step 2.
 `collect_page` is the paid half; `assemble_page` the free, pure half, which
 rebuilds nodes and the validation report from the cached responses.
 """
-from ..geometry import clamp_bbox, union_bboxes
+from ..geometry import clamp_bbox, drawn_bbox
 from ..jobs import now_iso
 from ..llm import image_part, structured_call, text_part
 from ..documents import format_documents
@@ -35,6 +35,27 @@ async def build_document(doc, step2_result, step1_result, sheet_result, options=
         i = page['pageIndex']
         collected.append(await collect_page(doc[i], page, step1_by_page[i], sheet_by_page[i], {**options, 'networkPage': _network_page(options.get('network'), i)}))
     return {**assemble_document(collected, step2_result['fileName'], step1_result, sheet_result, options.get('network')), 'raw': collected}
+
+
+def _node_routes(kept, network_page, entities, by_id):
+    """{node local id: routes}, with every stretch of pipe in ONE node: a
+    line marked by two nodes would paint one over the other. Whole traced
+    pipes, with direction, where the pipeline traced the sheet (each span
+    already goes to one node, and a node given none is drawn by its box);
+    otherwise the model's own line routes, each line in the first node that
+    lists it."""
+    traced = node_routes(kept, network_page, entities) if network_page else {}
+    if traced:
+        return traced
+    owner = {}
+    for n in kept:
+        for eid in n['entityIds']:
+            if by_id[eid]['category'] == 'line' and by_id[eid].get('routes'):
+                owner.setdefault(eid, n['localId'])
+    routes = {}
+    for eid, node in owner.items():
+        routes.setdefault(node, []).extend({'entityId': eid, 'points': pts} for pts in by_id[eid]['routes'])
+    return routes
 
 
 def _network_page(network_doc, page_index):
@@ -179,9 +200,7 @@ def assemble_page(collected, step1_page, sheet_page, network_page=None):
         if e.get('tag'):
             tag_index.setdefault(normalize_tag(e['tag']), e['id'])
 
-    # Whole traced pipes, with direction, where the pipeline traced the sheet;
-    # otherwise the model's own line routes.
-    traced = node_routes(kept, network_page, ctx['entities']) if network_page else {}
+    routes = _node_routes(kept, network_page, ctx['entities'], by_id)
     nodes = []
     for n in kept:
         members = [by_id[e] for e in n['entityIds']]
@@ -197,8 +216,8 @@ def assemble_page(collected, step1_page, sheet_page, network_page=None):
             'memberCount': len(n['members']),
             'entityIds': n['entityIds'],
             'primaryEquipmentIds': primary,
-            'bbox': clamp_bbox(union_bboxes(e['bbox'] for e in members)),
-            'routes': traced.get(n['localId']) or [{'entityId': e['id'], 'points': pts} for e in members if e['category'] == 'line' and e.get('routes') for pts in e['routes']],
+            'bbox': clamp_bbox(drawn_bbox(members)),
+            'routes': routes.get(n['localId'], []),
             'hazop': {
                 'localId': n['localId'],
                 'name': n['name'],

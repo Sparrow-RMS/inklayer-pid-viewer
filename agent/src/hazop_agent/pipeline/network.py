@@ -36,6 +36,9 @@ from .pdf import _normalizer
 
 # Stroke widths (pt) of pipes on the sheets seen so far: 0.48 normal, 0.72 revised.
 PIPE_WIDTHS = (0.48, 0.72)
+# A sheet with no stroke wider than a hairline (some AutoCAD plots) cannot
+# tell pipe from detail by weight; its pipes are the hairlines themselves.
+HAIRLINE_WIDTHS = (0.0,)
 WIDTH_TOL = 0.03
 AXIS_TOL = 0.6       # pt off-axis a stroke may be and still count as straight
 JOIN_GAP = 14.0      # pt: largest straight-ahead gap bridged unconditionally (crossings, labels)
@@ -74,12 +77,41 @@ LINE_NUMBER = re.compile(r'^[A-Z]{1,4}-\d{2,3}-[A-Z0-9]{2,4}(-[A-Za-z0-9]{1,3})?
 
 # ─────────────────────────────────────────────────────────── reading the PDF
 
+def _visible(path, matrix):
+    """A `get_drawings()` path moved from unrotated page space into the
+    visible (rotation-applied) page, the space W, H and step 1's boxes use."""
+    items = []
+    for it in path['items']:
+        if it[0] in ('l', 'c'):
+            items.append((it[0], *(p * matrix for p in it[1:])))
+        elif it[0] == 're':
+            items.append((it[0], (it[1] * matrix).normalize(), *it[2:]))
+        elif it[0] == 'qu':
+            items.append((it[0], it[1] * matrix, *it[2:]))
+        else:
+            items.append(it)
+    return {**path, 'items': items, 'rect': (path['rect'] * matrix).normalize()}
+
+
 def trace_page(page, page_index, entities, text_items):
     """Reads the page's strokes and builds the network. The only impure call."""
-    to_norm, _ = _normalizer(page)
+    _, matrix = _normalizer(page)
     W, H = page.rect.width, page.rect.height
+    # AutoCAD plots SHX text as strokes and marks each run with a hidden
+    # "AutoCAD SHX Text" annotation; strokes inside one are lettering, not pipe.
+    lettering = [(a.rect * matrix).normalize() + (-1, -1, 1, 1) for a in page.annots() or []
+                 if (a.info.get('title') or '').startswith('AutoCAD SHX Text')]
+
+    def in_lettering(*pts):
+        return any(all(r.contains(p) for p in pts) for r in lettering)
+
     straight, diagonals, triangles, outlines = [], [], [], []
     for n_path, path in enumerate(page.get_drawings()):
+        # get_drawings() is in unrotated space; on a /Rotate page it would
+        # otherwise be traced transposed against everything else.
+        path = _visible(path, matrix)
+        if lettering and in_lettering(path['rect'].tl, path['rect'].br):
+            continue
         width = path.get('width') or 0
         color = path.get('color') or ()
         red = len(color) >= 3 and color[0] > 0.6 and color[1] < 0.35 and color[2] < 0.35
@@ -577,8 +609,9 @@ def build_network(page_index, W, H, straight, diagonals, triangles, entities, te
         a, b = _run_points(s)
         mid = ((a[0] + b[0]) / 2, (a[1] + b[1]) / 2)
         return any(_in_poly(mid, poly) and _in_poly(a, poly) and _in_poly(b, poly) for poly in shell_polys.values())
+    pipe_widths = PIPE_WIDTHS if any(s['w'] > WIDTH_TOL for s in straight) else HAIRLINE_WIDTHS
     keep = [s for s in straight
-            if any(abs(s['w'] - w) <= WIDTH_TOL for w in PIPE_WIDTHS) and not s.get('symbol')
+            if any(abs(s['w'] - w) <= WIDTH_TOL for w in pipe_widths) and not s.get('symbol')
             and _seg_inside(s, frame) and not any(_seg_inside(s, bx) for _, bx in bodies) and not in_shell(s)]
     keep += [s for s in _arrow_axes(triangles) if _seg_inside(s, frame)]
     runs, rejected = _classify(_join(keep), diagonals)

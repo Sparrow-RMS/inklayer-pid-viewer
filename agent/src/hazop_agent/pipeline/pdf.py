@@ -199,9 +199,11 @@ def render_region(page, region, target_px=1600):
     region_h = region['height'] * height
     scale = target_px / max(region_w, region_h)
 
-    # `clip` is given in unrotated page space; the region is in visible space.
-    clip = pymupdf.Rect(x0, y0, x0 + region_w, y0 + region_h) * page.derotation_matrix
-    pix = page.get_pixmap(matrix=pymupdf.Matrix(scale, scale), clip=clip.normalize(), alpha=False)
+    # `clip` is in visible (rotation-applied) page space, the same space as
+    # `region`: get_pixmap applies the page rotation before clipping. Passing
+    # it through derotation_matrix rendered the wrong part of a /Rotate page.
+    clip = pymupdf.Rect(x0, y0, x0 + region_w, y0 + region_h)
+    pix = page.get_pixmap(matrix=pymupdf.Matrix(scale, scale), clip=clip, alpha=False)
     return {'png': pix.tobytes('png'), 'width': pix.width, 'height': pix.height, 'scale': scale}
 
 

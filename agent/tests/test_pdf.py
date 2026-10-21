@@ -92,3 +92,23 @@ def test_render_region_scales_the_longest_side_to_target(page):
     assert max(out['width'], out['height']) == pytest.approx(800, abs=1)
     pix = pymupdf.Pixmap(out['png'])
     assert (pix.width, pix.height) == (out['width'], out['height'])
+
+
+@pytest.mark.parametrize('rotation', [0, 90, 180, 270])
+def test_render_region_shows_the_visible_region_on_rotated_pages(rotation):
+    doc = pymupdf.open()
+    page = doc.new_page(width=400, height=200)
+    page.draw_rect(pymupdf.Rect(0, 0, 40, 40), color=(0, 0, 0), fill=(0, 0, 0))
+    page.set_rotation(rotation)
+    # Where the black square appears on the visible (rotated) page.
+    mark = (pymupdf.Rect(0, 0, 40, 40) * page.rotation_matrix).normalize()
+    W, H = page.rect.width, page.rect.height
+
+    def darkness(x0, y0, x1, y1):
+        out = render_region(page, {'x': x0 / W, 'y': y0 / H, 'width': (x1 - x0) / W, 'height': (y1 - y0) / H}, target_px=50)
+        pix = pymupdf.Pixmap(out['png'])
+        return 1 - sum(pix.samples) / (len(pix.samples) * 255)
+
+    assert darkness(mark.x0 + 5, mark.y0 + 5, mark.x1 - 5, mark.y1 - 5) > 0.9
+    # The diagonally opposite corner of the visible page is blank.
+    assert darkness(W - mark.x1 + 5, H - mark.y1 + 5, W - mark.x0 - 5, H - mark.y0 - 5) < 0.1

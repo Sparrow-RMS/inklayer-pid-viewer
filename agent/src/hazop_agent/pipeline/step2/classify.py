@@ -10,7 +10,7 @@ Split the same way as step 1: `collect_page` is the paid half (one model call
 per page); `assemble_page` is the free, pure half (id validation, geometry
 derivation, coverage diagnostics).
 """
-from ..geometry import clamp_bbox, union_bboxes
+from ..geometry import clamp_bbox, drawn_bbox
 from ..jobs import now_iso
 from ..llm import image_part, structured_call, text_part
 from ..documents import format_documents
@@ -150,7 +150,7 @@ def assemble_page(collected):
         outlet_entity_ids, _ = _filter_known_ids(p.get('outletEntityIds'), entity_by_id)
 
         members = [entity_by_id[eid] for eid in entity_ids]
-        bbox = clamp_bbox(union_bboxes(e['bbox'] for e in members))
+        bbox = clamp_bbox(drawn_bbox(members))
         routes = [
             {'entityId': e['id'], 'points': points}
             for e in members

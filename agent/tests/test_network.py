@@ -1,5 +1,8 @@
 """Pipe tracing from drawn geometry (pipeline/network.py), on small synthetic sheets."""
-from hazop_agent.pipeline.network import build_network
+import pymupdf
+import pytest
+
+from hazop_agent.pipeline.network import build_network, trace_page
 
 W = H = 1000.0
 
@@ -117,3 +120,43 @@ def test_links_join_equipment_through_valves_with_their_direction():
     assert {link['from'], link['to']} == {'tk', 'fl'} and link['via'] == ['vl']
     assert link['flow'] == ('from->to' if link['from'] == 'tk' else 'to->from')
 
+
+
+def test_a_hairline_only_sheet_traces_its_hairlines_as_pipe():
+    net = trace([h(500, 100, 900, w=0.0)])
+    assert len(net['spans']) == 1
+
+
+def test_hairlines_are_not_pipe_on_a_sheet_that_draws_pipes_heavier():
+    net = trace([h(500, 100, 900, w=0.0), h(300, 100, 900)])
+    assert len(net['spans']) == 1
+    assert net['spans'][0]['points'][0]['y'] == 0.3
+
+
+@pytest.mark.parametrize('rotation', [0, 90, 180, 270])
+def test_trace_page_reads_strokes_in_the_visible_page(rotation):
+    doc = pymupdf.open()
+    page = doc.new_page(width=600, height=400)
+    page.draw_line((100, 200), (500, 200), width=0.48)
+    page.set_rotation(rotation)
+    net = trace_page(page, 0, [], [])
+    assert len(net['spans']) == 1
+    # Where the drawn line appears on the visible page, as page fractions.
+    a, b = (pymupdf.Point(100, 200) * page.rotation_matrix, pymupdf.Point(500, 200) * page.rotation_matrix)
+    W2, H2 = page.rect.width, page.rect.height
+    want = sorted([(round(a.x / W2, 3), round(a.y / H2, 3)), (round(b.x / W2, 3), round(b.y / H2, 3))])
+    got = sorted((round(p['x'], 3), round(p['y'], 3)) for p in net['spans'][0]['points'])
+    assert got == want
+
+
+def test_trace_page_skips_autocad_shx_lettering():
+    doc = pymupdf.open()
+    page = doc.new_page(width=600, height=400)
+    page.draw_line((100, 200), (500, 200), width=0.48)
+    page.draw_line((100, 100), (300, 100), width=0.48)  # a stroke of plotted text
+    annot = page.add_rect_annot(pymupdf.Rect(90, 90, 310, 110))
+    annot.set_info(title='AutoCAD SHX Text')
+    annot.update()
+    net = trace_page(page, 0, [], [])
+    assert len(net['spans']) == 1
+    assert net['spans'][0]['points'][0]['y'] == 0.5
