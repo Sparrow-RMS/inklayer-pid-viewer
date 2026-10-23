@@ -97,7 +97,7 @@ function Toolbar(props: {
         Study package{props.packageProgress ? ` (${props.packageProgress.provided}/${props.packageProgress.total})` : ''}
       </button>
       {/* Claude draws the drawing as a 3D plant (agent/src/hazop_agent/plant3d.py). */}
-      <button className="feature" onClick={props.onOpen3d} title="Show this P&ID as an interactive 3D model of the plant, drawn by Claude">
+      <button className="feature" onClick={props.onOpen3d} title="Show this P&ID as an interactive 3D model of the plant, drawn by Sparrow">
         <span aria-hidden="true" className="viewer-toolbar-icon">view_in_ar</span>
         {props.is3dBusy ? '3D view (building…)' : '3D view'}
         <span className="viewer-toolbar-new">New</span>

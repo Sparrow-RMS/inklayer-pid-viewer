@@ -1,11 +1,15 @@
-.run-backdrop {
+.run-backdrop,
+/* Other screens in this look (the 3D view's build panel) take the tokens too. */
+.run-theme {
   --run-ink: #0b1020;
   --run-muted: #6b7286;
   --run-line: #e7e9f2;
   --run-accent: #5b5cf6;
   --run-teal: #12b5a3;
   --run-danger: #e5484d;
+}
 
+.run-backdrop {
   position: fixed;
   z-index: 1000;
   inset: 0;

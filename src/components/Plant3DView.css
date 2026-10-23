@@ -132,19 +132,6 @@
   margin: 0;
 }
 
-.p3d-thinking {
-  max-height: 7.5em;
-  overflow: hidden;
-  color: var(--p3d-muted);
-  font-size: 12px;
-  font-style: italic;
-  line-height: 1.5;
-  /* The newest text is at the bottom; fade the oldest out at the top. */
-  mask-image: linear-gradient(to bottom, transparent, black 2.5em);
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-}
 
 .p3d-error {
   padding: 8px 12px;
@@ -153,17 +140,78 @@
   color: var(--p3d-error-text);
 }
 
-.p3d-spinner {
-  width: 28px;
-  height: 28px;
-  border: 3px solid var(--p3d-border);
-  border-top-color: var(--p3d-accent);
-  border-radius: 50%;
-  animation: p3d-spin 0.9s linear infinite;
+
+
+/* While building: the construction site beside the build panel, in the
+   pipeline run dialog's look (its classes come from PipelineRunDialog.css). */
+.p3d-building {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 400px;
+  gap: 14px;
+  padding: 14px;
+  background: #eef0f6;
 }
 
-@keyframes p3d-spin {
-  to {
-    transform: rotate(360deg);
+.p3d-site {
+  min-width: 0;
+  min-height: 0;
+  animation: p3d-rise 0.35s ease-out;
+}
+
+.p3d-panel {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 22px 22px 18px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 16px;
+  color: var(--run-ink);
+  background: #ffffff;
+  box-shadow: 0 20px 50px -24px rgba(11, 16, 32, 0.45);
+  animation: p3d-rise 0.35s ease-out 0.05s both;
+}
+
+.p3d-panel .run-header h2 {
+  font-size: 17px;
+}
+
+.p3d-stages {
+  grid-template-columns: 1fr;
+  gap: 7px;
+}
+
+.p3d-log {
+  flex: 1;
+  min-height: 140px;
+  font-size: 12px;
+}
+
+.p3d-thought {
+  margin-bottom: 8px;
+  color: #8f97ab;
+}
+
+.p3d-thought > span {
+  white-space: pre-wrap;
+}
+
+.p3d-thought-latest {
+  color: #f4f6fb;
+}
+
+@keyframes p3d-rise {
+  from { opacity: 0; transform: translateY(8px); }
+}
+
+@media (max-width: 980px) {
+  .p3d-building {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(220px, 1fr) minmax(0, 1.1fr);
   }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .p3d-site, .p3d-panel { animation: none; }
 }
