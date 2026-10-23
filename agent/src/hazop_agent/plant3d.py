@@ -32,6 +32,7 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import FileResponse, StreamingResponse
 
 from .pipeline import jobs
+from .streaming import with_heartbeat
 
 router = APIRouter()
 
@@ -133,7 +134,7 @@ async def generate(request: Request, fileName: str = Query('document.pdf'), forc
         name += '.pdf'
     # Same id as the pipeline and the viewer's studyIdFor.
     job_id = jobs.job_id_for(name, data)
-    return StreamingResponse(_stream(job_id, name, data, force), media_type='application/x-ndjson')
+    return StreamingResponse(with_heartbeat(_stream(job_id, name, data, force)), media_type='application/x-ndjson')
 
 
 async def _stream(job_id, name, data, force):
