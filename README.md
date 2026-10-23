@@ -28,7 +28,7 @@ In two terminals:
 cd agent
 cp .env.example .env    # then set OPENAI_API_KEY
 uv sync
-uv run hazop-agent serve   # http://127.0.0.1:4002
+uv run hazop-agent serve   # http://127.0.0.1:4002 (AGENT_PORT in .env changes it)
 ```
 
 ```bash

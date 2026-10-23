@@ -2,7 +2,9 @@
 // drawing's thread id is its study / job id: the chat and the pipeline runs
 // for a drawing share it, so the conversation comes back with the drawing.
 
-const AGENT_CHAT_URL = import.meta.env.VITE_AGENT_CHAT_URL || '/agent/chat'
+import { agentFetch, agentUrl } from './agentClient'
+
+const AGENT_CHAT_URL = import.meta.env.VITE_AGENT_CHAT_URL || agentUrl('/agent/chat')
 
 export type ChatEvent =
   | { type: 'tool'; name: string; args: Record<string, unknown> }
@@ -17,7 +19,7 @@ export interface ChatTurn {
 }
 
 export async function sendChat(threadId: string, message: string, onEvent: (event: ChatEvent) => void): Promise<void> {
-  const response = await fetch(AGENT_CHAT_URL, {
+  const response = await agentFetch(AGENT_CHAT_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ threadId, message }),
@@ -41,7 +43,7 @@ export async function sendChat(threadId: string, message: string, onEvent: (even
 
 /** The drawing's conversation so far. */
 export async function getChatHistory(threadId: string): Promise<ChatTurn[]> {
-  const response = await fetch(`${AGENT_CHAT_URL}/${encodeURIComponent(threadId)}`)
+  const response = await agentFetch(`${AGENT_CHAT_URL}/${encodeURIComponent(threadId)}`)
   if (!response.ok) throw new Error(`Chat history request failed (${response.status})`)
   return (await response.json()).messages as ChatTurn[]
 }

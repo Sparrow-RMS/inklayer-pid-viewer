@@ -4,7 +4,9 @@
  * for before it starts, attached to the open drawing, and the readiness
  * checklist built from them.
  */
-const HAZOP_API = import.meta.env.VITE_HAZOP_API_URL || '/agent/hazop'
+import { agentFetch, agentUrl } from './agentClient'
+
+const HAZOP_API = import.meta.env.VITE_HAZOP_API_URL || agentUrl('/agent/hazop')
 
 export type DocumentStatus = 'provided' | 'partial' | 'missing'
 
@@ -51,7 +53,7 @@ export interface StudyPackage {
 export const ACCEPTED_FILES = '.pdf,.xlsx,.xls,.xlsm,.csv,.docx,.doc,.txt,.png,.jpg,.jpeg,.dwg,.dxf'
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${HAZOP_API}${path}`, init)
+  const response = await agentFetch(`${HAZOP_API}${path}`, init)
   if (!response.ok) {
     const body = await response.json().catch(() => null)
     const detail = typeof body?.detail === 'string' ? body.detail : body?.detail?.[0]?.msg
@@ -85,6 +87,7 @@ export function deleteDocument(id: string): Promise<void> {
   return request(`/documents/${encodeURIComponent(id)}`, { method: 'DELETE' })
 }
 
+/** The document's file URL; open it with openAgentFile (agentClient.ts), which sends the API key. */
 export function documentUrl(id: string): string {
   return `${HAZOP_API}/documents/${encodeURIComponent(id)}/file`
 }

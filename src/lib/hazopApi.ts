@@ -1,4 +1,5 @@
 import type { ProposedNode } from '../components/ChatPanel'
+import { agentFetch, agentUrl } from './agentClient'
 
 /**
  * Client for the agent server's HAZOP worksheet routes
@@ -11,7 +12,7 @@ import type { ProposedNode } from '../components/ChatPanel'
  * numbered 1 / 1.1 / 1.1.1 / 1.1.1.1. A study is one drawing, keyed by the same
  * id the pipeline gives its job directory, so a worksheet follows the PDF.
  */
-const HAZOP_API = import.meta.env.VITE_HAZOP_API_URL || '/agent/hazop'
+const HAZOP_API = import.meta.env.VITE_HAZOP_API_URL || agentUrl('/agent/hazop')
 
 export type RecommendationStatus = 'open' | 'in progress' | 'closed'
 
@@ -104,7 +105,7 @@ export interface DeviationDraft {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${HAZOP_API}${path}`, {
+  const response = await agentFetch(`${HAZOP_API}${path}`, {
     ...init,
     headers: init?.body ? { 'Content-Type': 'application/json' } : undefined,
   })

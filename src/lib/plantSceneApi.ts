@@ -2,7 +2,9 @@
 // the pipeline's own entities and traced pipes, with Claude's sizing of the
 // equipment, keyed by the ids the HAZOP nodes list.
 
-const PLANT_SCENE_URL = import.meta.env.VITE_PLANT_SCENE_URL || '/agent/plant-scene'
+import { agentFetch, agentUrl } from './agentClient'
+
+const PLANT_SCENE_URL = import.meta.env.VITE_PLANT_SCENE_URL || agentUrl('/agent/plant-scene')
 
 export type ItemShape =
   | 'vertical_vessel' | 'column' | 'tank' | 'horizontal_vessel' | 'heat_exchanger' | 'pump' | 'compressor'
@@ -64,11 +66,11 @@ async function read(response: Response): Promise<PlantScene> {
 }
 
 export async function getPlantScene(jobId: string): Promise<PlantScene> {
-  return read(await fetch(`${PLANT_SCENE_URL}/${encodeURIComponent(jobId)}`))
+  return read(await agentFetch(`${PLANT_SCENE_URL}/${encodeURIComponent(jobId)}`))
 }
 
 /** Has Claude size the equipment (cached server-side), then returns the scene. */
 export async function sizePlantScene(jobId: string, force = false): Promise<PlantScene> {
   const params = force ? '?force=true' : ''
-  return read(await fetch(`${PLANT_SCENE_URL}/${encodeURIComponent(jobId)}${params}`, { method: 'POST' }))
+  return read(await agentFetch(`${PLANT_SCENE_URL}/${encodeURIComponent(jobId)}${params}`, { method: 'POST' }))
 }

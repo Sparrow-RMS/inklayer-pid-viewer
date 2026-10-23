@@ -3,7 +3,9 @@
 // consolidation when maxNodes is set) in one request, and streams progress
 // back as newline-delimited JSON until the final nodes document arrives.
 
-const AGENT_RUN_URL = import.meta.env.VITE_AGENT_RUN_URL || '/agent/run'
+import { agentFetch, agentUrl } from './agentClient'
+
+const AGENT_RUN_URL = import.meta.env.VITE_AGENT_RUN_URL || agentUrl('/agent/run')
 
 export interface ValidationFinding {
   check: string
@@ -45,7 +47,7 @@ export async function runPipeline(
   const params = new URLSearchParams({ fileName: fileName || 'document.pdf' })
   if (maxNodes) params.set('maxNodes', String(maxNodes))
 
-  const response = await fetch(`${AGENT_RUN_URL}?${params}`, {
+  const response = await agentFetch(`${AGENT_RUN_URL}?${params}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/pdf' },
     body: pdf,

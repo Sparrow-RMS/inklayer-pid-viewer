@@ -11,6 +11,8 @@ node_modules
 dist
 dist-ssr
 *.local
+# Viewer build settings; .env.example documents them
+.env
 
 # Editor directories and files
 .vscode/*

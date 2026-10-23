@@ -43,7 +43,7 @@ uv run hazop-agent run <jobId> --max-nodes 9       # add or retarget consolidati
 uv run hazop-agent run <jobId> --replay            # re-apply deterministic rules, no model calls
 uv run hazop-agent run <jobId> --force-from step2  # redo step 2 and everything after it
 uv run hazop-agent graph                           # Mermaid diagram
-uv run hazop-agent serve                           # HTTP endpoint for the viewer (port 4002)
+uv run hazop-agent serve                           # HTTP endpoint for the viewer (AGENT_PORT, default 4002)
 uv run hazop-agent list
 uv run pytest
 ```
@@ -67,6 +67,28 @@ consolidation) and click **Run HAZOP pipeline**. The viewer uploads the PDF to
 run finishes. The endpoint streams newline-delimited JSON; see
 `src/hazop_agent/server.py`. It uses the same job directory as the CLI, so
 opening the same drawing again reuses its cached steps.
+
+## Exposing the agent (API keys, other origins, API docs)
+
+The agent's HTTP API can be called by the viewer from another site and by
+other systems. Settings in `.env` (see `.env.example`):
+
+- `AGENT_HOST` / `AGENT_PORT`: where `serve` listens (default `127.0.0.1:4002`).
+- `AGENT_API_KEYS`: comma-separated keys. Once set, every `/agent` request
+  needs one, as `Authorization: Bearer <key>` or `X-API-Key: <key>`;
+  `/agent/health` and the docs stay open.
+- `AGENT_CORS_ORIGINS`: browser origins allowed to call it from another site.
+
+Interactive API docs are at `/agent/docs` (OpenAPI: `/agent/openapi.json`).
+The viewer finds the agent through `VITE_AGENT_URL` and sends
+`VITE_AGENT_API_KEY` (the repo root's `.env.example`). Serve the agent over
+HTTPS (a reverse proxy in front of it) whenever it is reachable from outside.
+
+```bash
+curl -H "Authorization: Bearer $KEY" https://agent.example.com/agent/chat/<jobId>
+curl -H "X-API-Key: $KEY" -H "Content-Type: application/pdf" \
+     --data-binary @drawing.pdf "https://agent.example.com/agent/run?fileName=drawing.pdf"
+```
 
 ## OpenAI or Claude
 

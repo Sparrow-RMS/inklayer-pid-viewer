@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { generatePlant3d } from '../lib/plant3dApi'
+import { fetchPlant3dPage, generatePlant3d, openPlant3dInNewTab } from '../lib/plant3dApi'
 import ConstructionSite from './ConstructionSite'
 import { progressFor, siteStage, SITE_STAGES } from '../lib/constructionProgress'
 // The building state reuses the pipeline run dialog's header, progress bar,
@@ -30,7 +30,8 @@ type State =
       activity: number
       latestTag: string | null
     }
-  | { phase: 'ready'; url: string }
+  /** html: the generated page, fetched with the API key and shown through srcdoc. */
+  | { phase: 'ready'; html: string }
   | { phase: 'failed'; message: string }
 
 // The reasoning kept for the panel; past this the oldest is dropped.
@@ -53,7 +54,7 @@ function Icon({ name }: { name: string }) {
 export default function Plant3DView({ pdf, fileName, open, rightOffset, onClose, onBusyChange }: Plant3DViewProps) {
   const [state, setState] = useState<State>({ phase: 'idle' })
   const [now, setNow] = useState(() => Date.now())
-  // Bumped per page load, so a regenerated page at the same URL reloads.
+  // Bumped per page load, so a regenerated page remounts its iframe.
   const [version, setVersion] = useState(0)
   const abortRef = useRef<AbortController | null>(null)
 
@@ -65,6 +66,7 @@ export default function Plant3DView({ pdf, fileName, open, rightOffset, onClose,
       setState({ phase: 'running', startedAt: Date.now(), chars: 0, thinking: '', activity: 0, latestTag: null })
       try {
         let finished = false
+        let pageUrl: string | null = null
         await generatePlant3d(
           pdf,
           fileName,
@@ -86,8 +88,7 @@ export default function Plant3DView({ pdf, fileName, open, rightOffset, onClose,
               setState((s) => (s.phase === 'running' ? { ...s, chars: event.chars, activity: s.activity + 1 } : s))
             } else if (event.type === 'result') {
               finished = true
-              setVersion((v) => v + 1)
-              setState({ phase: 'ready', url: event.url })
+              pageUrl = event.url
             } else if (event.type === 'error') {
               finished = true
               setState({ phase: 'failed', message: event.message })
@@ -96,6 +97,12 @@ export default function Plant3DView({ pdf, fileName, open, rightOffset, onClose,
           controller.signal,
         )
         if (!finished) setState({ phase: 'failed', message: 'The agent server closed the connection before the 3D view was ready.' })
+        if (pageUrl) {
+          const html = await fetchPlant3dPage(pageUrl)
+          if (controller.signal.aborted) return
+          setVersion((v) => v + 1)
+          setState({ phase: 'ready', html })
+        }
       } catch (err) {
         if (controller.signal.aborted) return
         setState({ phase: 'failed', message: err instanceof Error ? err.message : String(err) })
@@ -141,9 +148,9 @@ export default function Plant3DView({ pdf, fileName, open, rightOffset, onClose,
             </span>
           </div>
           {state.phase === 'ready' && (
-            <a className="p3d-button" href={`${state.url}?v=${version}`} target="_blank" rel="noopener noreferrer">
+            <button className="p3d-button" onClick={() => openPlant3dInNewTab(state.html, `3D plant view · ${fileName}`)}>
               Open in new tab
-            </a>
+            </button>
           )}
           <button
             className="p3d-button"
@@ -166,7 +173,7 @@ export default function Plant3DView({ pdf, fileName, open, rightOffset, onClose,
               key={version}
               className="p3d-frame"
               title={`3D plant view of ${fileName}`}
-              src={`${state.url}?v=${version}`}
+              srcDoc={state.html}
               sandbox="allow-scripts"
             />
           )}

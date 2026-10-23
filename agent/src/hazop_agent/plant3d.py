@@ -119,7 +119,7 @@ async def get_page(job_id: str):
     return FileResponse(path, media_type='text/html', headers={'Cache-Control': 'no-store'})
 
 
-@router.post('/agent/plant3d')
+@router.post('/agent/plant3d', openapi_extra={'requestBody': {'required': True, 'content': {'application/pdf': {'schema': {'type': 'string', 'format': 'binary'}}}}})
 async def generate(request: Request, fileName: str = Query('document.pdf'), force: bool = Query(False)):
     data = await request.body()
     if not data.startswith(b'%PDF'):

@@ -10,6 +10,7 @@ import {
   type ChecklistItem,
   type StudyPackage as Package,
 } from '../lib/studyApi'
+import { openAgentFile } from '../lib/agentClient'
 import './StudyPackage.css'
 
 export interface StudyPackageProps {
@@ -81,7 +82,14 @@ function ChecklistRow({
         <ul className="pkg-files">
           {files.map((d) => (
             <li key={d.id}>
-              <a href={documentUrl(d.id)} target="_blank" rel="noreferrer">
+              {/* Fetched with the API key, which a plain link can't send. */}
+              <a
+                href={documentUrl(d.id)}
+                onClick={(e) => {
+                  e.preventDefault()
+                  openAgentFile(documentUrl(d.id), d.fileName).catch((err) => window.alert(err instanceof Error ? err.message : String(err)))
+                }}
+              >
                 {d.fileName}
               </a>
               <span className="pkg-muted">

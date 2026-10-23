@@ -7,7 +7,7 @@
     uv run hazop-agent worksheet <jobId> p0-node-1     # step 4: draft a node's HAZOP worksheet (--save adds it)
     uv run hazop-agent samples                         # build the reference library from docs/hazop_samples/
     uv run hazop-agent graph                           # print the graph as Mermaid
-    uv run hazop-agent serve                           # HTTP endpoint for the viewer (port 4002)
+    uv run hazop-agent serve                           # HTTP endpoint for the viewer (AGENT_PORT, default 4002)
     uv run hazop-agent list                            # jobs on disk
 
 Artifacts live in data/jobs/<jobId>/ at the repo root (PIPELINE_JOBS_DIR moves it).
@@ -187,8 +187,9 @@ def main(argv=None):
     cmp.add_argument('--consolidated', action='store_true', help='compare the consolidated (max nodes) breakdowns')
     cmp.add_argument('--json', action='store_true', help='print the comparison as JSON')
     serve = sub.add_parser('serve', parents=[provider], help='serve the graph over HTTP for the viewer')
-    serve.add_argument('--host', default='127.0.0.1')
-    serve.add_argument('--port', type=int, default=int(os.environ.get('AGENT_PORT', 4002)))
+    # No defaults here: .env isn't loaded yet when the parser is built. Resolved below.
+    serve.add_argument('--host', help='address to listen on (default: AGENT_HOST, else 127.0.0.1)')
+    serve.add_argument('--port', type=int, help='port to listen on (default: AGENT_PORT, else 4002)')
 
     args = parser.parse_args(argv)
     _load_env()
@@ -208,7 +209,10 @@ def main(argv=None):
         import uvicorn
 
         from .server import app
-        uvicorn.run(app, host=args.host, port=args.port)
+        # A flag wins, then AGENT_HOST / AGENT_PORT from the shell or agent/.env, then the defaults.
+        host = args.host or os.environ.get('AGENT_HOST') or '127.0.0.1'
+        port = args.port or int(os.environ.get('AGENT_PORT') or 4002)
+        uvicorn.run(app, host=host, port=port)
         return 0
     if args.command == 'samples':
         from .pipeline.samples import LIBRARY, SAMPLES_DIR, build_library

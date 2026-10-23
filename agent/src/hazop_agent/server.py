@@ -3,6 +3,8 @@
     uv run hazop-agent serve            # http://127.0.0.1:4002
 
 POST /agent/run?fileName=drawing.pdf&maxNodes=9 with the raw PDF as the body.
+Interactive API docs: /agent/docs (OpenAPI at /agent/openapi.json). Access
+(API keys, allowed browser origins) is set in access.py.
 The response is newline-delimited JSON, one event per line, so a run that
 takes minutes shows progress as it goes:
 
@@ -43,6 +45,7 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 
+from . import access
 from . import chat as chat_agent
 from .graph.builder import graph
 from .pipeline import edits, jobs, llm
@@ -54,7 +57,16 @@ from .worksheets import router as worksheets_router
 # One run at a time: two runs of the same drawing would write the same job directory.
 _run_lock = asyncio.Lock()
 
-app = FastAPI(title='hazop-agent')
+app = FastAPI(
+    title='hazop-agent',
+    description='P&ID to HAZOP nodes, worksheets, study package, chat and 3D plant views. '
+                'Send an API key as `Authorization: Bearer <key>` or `X-API-Key` when the server has AGENT_API_KEYS set.',
+    # Under /agent, like every route, so one proxy rule serves the docs too.
+    docs_url='/agent/docs',
+    openapi_url='/agent/openapi.json',
+    redoc_url=None,
+)
+access.install(app)
 app.include_router(worksheets_router)
 app.include_router(study_package_router)
 app.include_router(plant3d_router)
@@ -67,7 +79,8 @@ async def health():
             'busy': _run_lock.locked()}
 
 
-@app.post('/agent/run')
+# The raw PDF is the body; described here because FastAPI can't infer it from Request.
+@app.post('/agent/run', openapi_extra={'requestBody': {'required': True, 'content': {'application/pdf': {'schema': {'type': 'string', 'format': 'binary'}}}}})
 async def run(request: Request, fileName: str = Query('document.pdf'), maxNodes: int | None = Query(None, ge=1)):
     data = await request.body()
     if not data.startswith(b'%PDF'):

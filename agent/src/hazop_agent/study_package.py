@@ -141,7 +141,8 @@ def get_package(study_id: str):
     return {'studyId': study_id, 'documentTypes': DOCUMENT_TYPES, 'documents': docs, 'checklist': checklist(study_id, docs)}
 
 
-@router.post('/studies/{study_id}/documents', status_code=201)
+@router.post('/studies/{study_id}/documents', status_code=201,
+             openapi_extra={'requestBody': {'required': True, 'content': {'application/octet-stream': {'schema': {'type': 'string', 'format': 'binary'}}}}})
 async def upload_document(study_id: str, request: Request, docType: str = Query(...), fileName: str = Query(...)):
     if docType not in TYPE_IDS:
         raise HTTPException(422, f'unknown document type {docType!r}; one of {sorted(TYPE_IDS)}')
