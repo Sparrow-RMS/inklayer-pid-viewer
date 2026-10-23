@@ -39,7 +39,7 @@ function LoginScreen({ onSignIn }: { onSignIn: (name: string) => void }) {
       <div aria-hidden="true" className="showcase-glow" />
       <div aria-hidden="true" className="showcase-grid" />
       <header className="showcase-header">
-        <div aria-label="Sparrow logo placeholder" className="sparrow-logo-slot" role="img">SPARROW LOGO</div>
+        <img alt="Sparrow" className="sparrow-logo" src="/sparrow-logo.png" />
         <span className="showcase-pill"><i />New · Your P&amp;ID as a 3D shop floor</span>
       </header>
 

@@ -101,8 +101,7 @@ export default function PipelineRunDialog({ run, onClose }: { run: PipelineRun; 
       <section aria-labelledby="run-title" aria-modal="true" className="run-dialog" role="dialog">
         <aside className="run-brand">
           <div aria-hidden="true" className="run-brand-glow" />
-          <div aria-label={`${COMPANY.name} logo placeholder`} className="run-logo-slot" role="img">SPARROW LOGO</div>
-
+           <img alt={COMPANY.name} className="run-logo" src="/sparrow-logo.png" />
           <div className="run-slide" key={slide}>
             <span className="run-slide-icon"><Icon name={current.icon} /></span>
             <h3>{current.title}</h3>

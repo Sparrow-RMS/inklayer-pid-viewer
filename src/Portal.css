@@ -64,7 +64,7 @@
 .showcase-glow { position: absolute; z-index: -1; inset: -20% -10% auto auto; width: 720px; height: 620px; pointer-events: none; background: radial-gradient(closest-side, rgba(99,123,255,.35), transparent 70%), radial-gradient(closest-side at 30% 70%, rgba(94,234,212,.16), transparent 70%); filter: blur(20px); }
 .showcase-grid { position: absolute; z-index: -1; inset: 0; pointer-events: none; background-image: linear-gradient(var(--sc-line) 1px, transparent 1px), linear-gradient(90deg, var(--sc-line) 1px, transparent 1px); background-size: 44px 44px; -webkit-mask-image: radial-gradient(ellipse 80% 60% at 70% 30%, #000 20%, transparent 75%); mask-image: radial-gradient(ellipse 80% 60% at 70% 30%, #000 20%, transparent 75%); }
 .showcase-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-.sparrow-logo-slot { min-width: 132px; min-height: 40px; display: grid; place-items: center; padding: 8px 12px; border: 1px dashed rgba(255,255,255,.35); border-radius: 8px; color: var(--sc-muted); font-size: 10px; font-weight: 600; letter-spacing: 1px; }
+.sparrow-logo { height: 36px; width: auto; display: block; }
 .showcase-pill { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px 6px 10px; border: 1px solid var(--sc-line); border-radius: 999px; color: #d6dcea; background: rgba(255,255,255,.04); backdrop-filter: blur(8px); font-size: 12px; font-weight: 500; white-space: nowrap; }
 .showcase-pill i { width: 7px; height: 7px; border-radius: 50%; background: var(--sc-accent-2); box-shadow: 0 0 0 3px rgba(94,234,212,.18); }
 .login-showcase-copy { max-width: 520px; margin-top: auto; }
