@@ -1,7 +1,10 @@
 """P&ID -> 3D plant view, written by Claude as a self-contained Three.js page.
 
     POST /agent/plant3d?fileName=drawing.pdf[&force=true]   raw PDF body; newline-delimited events:
-        {"type": "start", "jobId": ..., "cached": true}   first; cached = the page is already on disk
+        {"type": "start", "jobId": ..., "cached": true, "joined": false}
+                                                            first; cached = the page is already on disk;
+                                                            joined = this drawing was already being drawn,
+                                                            and the stream replays it from the start
         {"type": "thinking", "text": ...}                   a piece of Claude's reasoning summary
         {"type": "progress", "chars": 12000}                how much of the page has been written
         {"type": "result", "jobId": ..., "url": "/agent/plant3d/<jobId>"}
@@ -11,6 +14,12 @@
 The PDF goes to Claude as a document block, and the answer is one HTML file
 that loads Three.js from a CDN and draws the plant: equipment as primitives at
 plausible positions, the drawn lines as piping between them, tags as labels.
+Each drawing's page is written by one background task at a time. A request
+for a drawing already being drawn (a second tab, a retry after a dropped
+connection) follows that task instead of starting another, and a request that
+goes away doesn't stop it: the page is paid for, so it is finished and kept.
+Different drawings are drawn at the same time.
+
 It is cached as <job dir>/plant3d.html, keyed like every other artifact by the
 drawing's content, so reopening the drawing shows it without another call.
 
@@ -36,9 +45,9 @@ from .streaming import with_heartbeat
 
 router = APIRouter()
 
-# One generation at a time; independent of the pipeline's lock, so a 3D view
-# can be drawn while the HAZOP pipeline runs.
-_lock = asyncio.Lock()
+# Generations in progress, by job id: one per drawing at a time, any number of
+# drawings at once (see _Generation).
+_generations = {}
 _client = None
 
 PAGE_NAME = 'plant3d.html'
@@ -127,8 +136,6 @@ async def generate(request: Request, fileName: str = Query('document.pdf'), forc
         raise HTTPException(400, 'request body must be a PDF')
     if len(data) > MAX_PDF_BYTES:
         raise HTTPException(413, f'the PDF is {len(data) // (1024 * 1024)} MB; the 3D view takes up to {MAX_PDF_BYTES // (1024 * 1024)} MB')
-    if _lock.locked():
-        raise HTTPException(409, 'a 3D view is already being generated')
     name = Path(fileName).name or 'document.pdf'
     if not name.lower().endswith('.pdf'):
         name += '.pdf'
@@ -137,66 +144,123 @@ async def generate(request: Request, fileName: str = Query('document.pdf'), forc
     return StreamingResponse(with_heartbeat(_stream(job_id, name, data, force)), media_type='application/x-ndjson')
 
 
+class _Generation:
+    """One drawing's page being written: a background task, and its events so far
+    for every request following it (a late one gets them all, then the rest live)."""
+
+    def __init__(self):
+        self.events = []
+        self.done = False
+        self.changed = asyncio.Condition()
+        self.task = None
+
+    async def publish(self, line):
+        async with self.changed:
+            self.events.append(line)
+            self.changed.notify_all()
+
+    async def finish(self):
+        async with self.changed:
+            self.done = True
+            self.changed.notify_all()
+
+    async def follow(self):
+        seen = 0
+        while True:
+            async with self.changed:
+                await self.changed.wait_for(lambda: len(self.events) > seen or self.done)
+                batch, done = self.events[seen:], self.done
+            seen += len(batch)
+            for line in batch:
+                yield line
+            if done and seen == len(self.events):
+                return
+
+
 async def _stream(job_id, name, data, force):
+    """The request's stream: the cached page, or the drawing's generation, joined or started."""
     url = f'/agent/plant3d/{job_id}'
-    async with _lock:
-        cached = page_path(job_id).exists() and not force
-        yield _line({'type': 'start', 'jobId': job_id, 'cached': cached})
-        if cached:
+    generation = _generations.get(job_id)
+    joined = generation is not None
+    if not joined:
+        if page_path(job_id).exists() and not force:
+            yield _line({'type': 'start', 'jobId': job_id, 'cached': True, 'joined': False})
             yield _line({'type': 'result', 'jobId': job_id, 'url': url})
             return
+        # No await between the check and this: no second generation can start in between.
+        generation = _generations[job_id] = _Generation()
+        generation.task = asyncio.create_task(_run(job_id, name, data, generation))
+    yield _line({'type': 'start', 'jobId': job_id, 'cached': False, 'joined': joined})
+    async for line in generation.follow():
+        yield line
 
-        jobs.ensure_job(job_id, fileName=name)
-        jobs.stash_source(job_id, data)
-        try:
-            async with _get_client().beta.messages.stream(
-                model=model_name(),
-                max_tokens=MAX_TOKENS,
-                system=SYSTEM,
-                messages=[{
-                    'role': 'user',
-                    'content': [
-                        {'type': 'document', 'source': {'type': 'base64', 'media_type': 'application/pdf',
-                                                        'data': base64.standard_b64encode(data).decode()}},
-                        {'type': 'text', 'text': PROMPT},
-                    ],
-                }],
-                thinking={'type': 'adaptive', 'display': 'summarized'},
-                output_config={'effort': 'high'},
-                # A declined request is re-run on Anthropic's recommended fallback model.
-                betas=['server-side-fallback-2026-07-01'],
-                fallbacks='default',
-            ) as stream:
-                written = reported = 0
-                async for event in stream:
-                    if event.type != 'content_block_delta':
-                        continue
-                    if event.delta.type == 'thinking_delta' and event.delta.thinking:
-                        yield _line({'type': 'thinking', 'text': event.delta.thinking})
-                    elif event.delta.type == 'text_delta':
-                        written += len(event.delta.text)
-                        if written - reported >= 2000:
-                            reported = written
-                            yield _line({'type': 'progress', 'chars': written})
-                message = await stream.get_final_message()
-        except Exception as err:  # noqa: BLE001 — reported to the viewer instead of a dropped stream
-            yield _line({'type': 'error', 'message': f'{type(err).__name__}: {err}'})
-            return
 
-        if message.stop_reason == 'refusal':
-            details = message.stop_details
-            yield _line({'type': 'error', 'message': f'Claude declined to draw this drawing{f" ({details.explanation})" if details and details.explanation else ""}.'})
-            return
-        if message.stop_reason == 'max_tokens':
-            yield _line({'type': 'error', 'message': (
-                f'The 3D page was cut off before it was finished: Claude used all {MAX_TOKENS:,} output tokens '
-                f'({written:,} characters of page written, the rest on reasoning). Try again, or set PLANT3D_MODEL to a different model.')})
-            return
-        html = extract_html(''.join(b.text for b in message.content if b.type == 'text'))
-        if not html:
-            yield _line({'type': 'error', 'message': "Claude's answer did not contain an HTML page."})
-            return
-        page_path(job_id).write_text(html)
-        jobs.ensure_job(job_id, plant3d={'model': message.model, 'generatedAt': jobs.now_iso(),
-                                         'inputTokens': message.usage.input_tokens, 'outputTokens': message.usage.output_tokens})
-        yield _line({'type': 'result', 'jobId': job_id, 'url': url})
+async def _run(job_id, name, data, generation):
+    """Writes the page in the background, publishing its events; outlives the request that started it."""
+    try:
+        async for line in _write_page(job_id, name, data):
+            await generation.publish(line)
+    except Exception as err:  # noqa: BLE001 — reported to every follower
+        await generation.publish(_line({'type': 'error', 'message': f'{type(err).__name__}: {err}'}))
+    finally:
+        if _generations.get(job_id) is generation:
+            del _generations[job_id]
+        await generation.finish()
+
+
+async def _write_page(job_id, name, data):
+    url = f'/agent/plant3d/{job_id}'
+    jobs.ensure_job(job_id, fileName=name)
+    jobs.stash_source(job_id, data)
+    try:
+        async with _get_client().beta.messages.stream(
+            model=model_name(),
+            max_tokens=MAX_TOKENS,
+            system=SYSTEM,
+            messages=[{
+                'role': 'user',
+                'content': [
+                    {'type': 'document', 'source': {'type': 'base64', 'media_type': 'application/pdf',
+                                                    'data': base64.standard_b64encode(data).decode()}},
+                    {'type': 'text', 'text': PROMPT},
+                ],
+            }],
+            thinking={'type': 'adaptive', 'display': 'summarized'},
+            output_config={'effort': 'high'},
+            # A declined request is re-run on Anthropic's recommended fallback model.
+            betas=['server-side-fallback-2026-07-01'],
+            fallbacks='default',
+        ) as stream:
+            written = reported = 0
+            async for event in stream:
+                if event.type != 'content_block_delta':
+                    continue
+                if event.delta.type == 'thinking_delta' and event.delta.thinking:
+                    yield _line({'type': 'thinking', 'text': event.delta.thinking})
+                elif event.delta.type == 'text_delta':
+                    written += len(event.delta.text)
+                    if written - reported >= 2000:
+                        reported = written
+                        yield _line({'type': 'progress', 'chars': written})
+            message = await stream.get_final_message()
+    except Exception as err:  # noqa: BLE001 — reported to the viewer instead of a dropped stream
+        yield _line({'type': 'error', 'message': f'{type(err).__name__}: {err}'})
+        return
+
+    if message.stop_reason == 'refusal':
+        details = message.stop_details
+        yield _line({'type': 'error', 'message': f'Claude declined to draw this drawing{f" ({details.explanation})" if details and details.explanation else ""}.'})
+        return
+    if message.stop_reason == 'max_tokens':
+        yield _line({'type': 'error', 'message': (
+            f'The 3D page was cut off before it was finished: Claude used all {MAX_TOKENS:,} output tokens '
+            f'({written:,} characters of page written, the rest on reasoning). Try again, or set PLANT3D_MODEL to a different model.')})
+        return
+    html = extract_html(''.join(b.text for b in message.content if b.type == 'text'))
+    if not html:
+        yield _line({'type': 'error', 'message': "Claude's answer did not contain an HTML page."})
+        return
+    page_path(job_id).write_text(html)
+    jobs.ensure_job(job_id, plant3d={'model': message.model, 'generatedAt': jobs.now_iso(),
+                                     'inputTokens': message.usage.input_tokens, 'outputTokens': message.usage.output_tokens})
+    yield _line({'type': 'result', 'jobId': job_id, 'url': url})

@@ -24,6 +24,7 @@ composed on every GET, so it follows the latest step 1 and network without
 another call.
 """
 import asyncio
+import collections
 import json
 import os
 import re
@@ -35,7 +36,8 @@ from .pipeline import jobs, llm
 from .pipeline.pdf import load_pdf, render_region, to_data_url
 
 router = APIRouter()
-_lock = asyncio.Lock()
+# One sizing call per drawing at a time; different drawings in parallel.
+_locks = collections.defaultdict(asyncio.Lock)
 
 FORMS = 'plant-scene-forms'
 # Drawn in 3D; notes, labels, line-number labels, C&E references and data
@@ -235,9 +237,12 @@ async def get_scene(job_id: str):
 @router.post('/agent/plant-scene/{job_id}')
 async def generate_forms(job_id: str, force: bool = Query(False)):
     step1 = _require(job_id)
-    if _lock.locked():
-        raise HTTPException(409, 'the 3D forms are already being generated')
-    async with _lock:
+    lock = _locks[job_id]
+    # A request that waits for one already sizing this drawing takes its answer
+    # rather than paying again, even when it asked to force.
+    waited = lock.locked()
+    async with lock:
+        force = force and not waited
         cached = jobs.read_artifact(job_id, FORMS) if jobs.has_artifact(job_id, FORMS) else None
         if force or not cached or cached.get('step1GeneratedAt') != step1.get('generatedAt'):
             pdf = load_pdf(jobs.source_path(job_id))

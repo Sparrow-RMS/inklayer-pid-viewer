@@ -92,3 +92,31 @@ def test_a_claude_failure_is_reported_and_nothing_is_cached(job, monkeypatch):
 def test_needs_the_pipeline_first(jobs_dir):
     assert client.get('/agent/plant-scene/never-run').status_code == 404
     assert client.get('/agent/plant-scene/..%2Fx').status_code == 404
+
+
+async def test_two_sizing_requests_for_one_drawing_make_one_call(job, monkeypatch):
+    import asyncio
+
+    import httpx
+
+    calls = []
+    gate = asyncio.Event()
+
+    async def slow(**kwargs):
+        calls.append(kwargs)
+        await gate.wait()
+        return {'items': [{'id': 'p0-eq-1', 'shape': 'tank', 'diameterM': 7, 'heightM': 8, 'elevationM': 0}]}
+    monkeypatch.setattr(llm, 'anthropic_structured_call', slow)
+
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url='http://test') as http:
+        first = asyncio.create_task(http.post(f'/agent/plant-scene/{JOB}'))
+        while not calls:
+            await asyncio.sleep(0.01)
+        second = asyncio.create_task(http.post(f'/agent/plant-scene/{JOB}', params={'force': True}))
+        await asyncio.sleep(0.05)
+        gate.set()
+        a, b = await first, await second
+
+    assert a.status_code == b.status_code == 200  # no 409: the second waited
+    assert len(calls) == 1  # and took the first one's answer
+    assert b.json()['pages'][0]['items'][0]['sizedBy'] == 'claude'
