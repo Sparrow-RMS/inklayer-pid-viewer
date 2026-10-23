@@ -61,3 +61,31 @@ async def with_heartbeat(events, interval=None):
         task.cancel()
         with suppress(asyncio.CancelledError):
             await task
+
+
+async def json_when_done(task, interval=None):
+    """A JSON response for a slow task, kept alive with spaces until it's done.
+
+    For plain request/response endpoints whose work takes minutes (drafting a
+    worksheet): the response starts at once, a space goes out every `interval`
+    seconds (JSON allows whitespace before a value, so any client still reads
+    it as JSON), then the task's result. The status is 200 by then, so a
+    failure comes as {"error": {"status": ..., "detail": ...}}.
+
+    Waiting doesn't cancel `task`: if the client goes away, the work finishes.
+    """
+    import json
+
+    from fastapi import HTTPException
+
+    interval = interval or heartbeat_seconds()
+    while not task.done():
+        done, _ = await asyncio.wait({task}, timeout=interval)
+        if not done:
+            yield ' '
+    try:
+        yield json.dumps(task.result())
+    except HTTPException as err:
+        yield json.dumps({'error': {'status': err.status_code, 'detail': err.detail}})
+    except Exception as err:  # noqa: BLE001 — reported in the body: the status line has gone
+        yield json.dumps({'error': {'status': 502, 'detail': f'{type(err).__name__}: {err}'}})

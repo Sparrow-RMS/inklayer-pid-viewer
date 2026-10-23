@@ -33,9 +33,11 @@ from pathlib import Path
 from typing import Literal
 
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from .pipeline import jobs
+from .streaming import json_when_done
 
 RecommendationStatus = Literal['open', 'in progress', 'closed']
 
@@ -322,19 +324,42 @@ class GenerateIn(BaseModel):
     replace: bool = False  # delete the node's existing deviations first
 
 
-@router.post('/studies/{study_id}/nodes/{node_id}/generate')
+# Drafts in progress, by (study, node): a second click or a retry waits for the
+# draft already running instead of paying for another.
+_drafts = {}
+
+
+@router.post('/studies/{study_id}/nodes/{node_id}/generate', response_class=StreamingResponse)
 async def generate_node_worksheet(study_id: str, node_id: str, body: GenerateIn | None = None):
     """Step 4: drafts the node's worksheet (one model call, ~1-3 min) and adds
     it. A drafted deviation already in the worksheet (same guide word and
-    text) is skipped unless `replace` clears the node first."""
-    from .pipeline.step4.generate import generate
+    text) is skipped unless `replace` clears the node first.
+
+    The response is JSON, preceded by a space every few seconds while the
+    model works (proxies close a request that is silent for 60 s); a failure
+    after that point comes as {"error": {"status", "detail"}} with status 200.
+    The draft runs in the background: it is saved even if the client goes away."""
+    from .pipeline.step4.generate import find_node
     replace = bool(body and body.replace)
+    # The quick checks first, while a real status code can still be sent.
     try:
-        result = await generate(study_id, node_id)
+        find_node(study_id, node_id)
     except KeyError as err:
         raise HTTPException(404, str(err.args[0])) from err
     except FileNotFoundError as err:
         raise HTTPException(404, f'no pipeline results for {study_id}; run the pipeline first') from err
+
+    key = (study_id, node_id)
+    task = _drafts.get(key)
+    if task is None:
+        task = _drafts[key] = asyncio.create_task(_draft_and_save(study_id, node_id, replace))
+        task.add_done_callback(lambda t: _drafts.pop(key, None) if _drafts.get(key) is t else None)
+    return StreamingResponse(json_when_done(task), media_type='application/json')
+
+
+async def _draft_and_save(study_id, node_id, replace):
+    from .pipeline.step4.generate import generate
+    result = await generate(study_id, node_id)
 
     def save():
         with closing(_connect()) as conn, conn:

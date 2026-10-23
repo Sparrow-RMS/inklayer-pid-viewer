@@ -101,3 +101,92 @@ def test_an_unknown_node_or_job_is_404(jobs_dir, monkeypatch):
     assert client.post(f'{API}/studies/{JOB}/nodes/p0-node-1/generate').status_code == 404
     make_job()
     assert client.post(f'{API}/studies/{JOB}/nodes/p0-node-9/generate').status_code == 404
+
+
+# A draft takes minutes: the response stays alive, survives the client, and is shared.
+
+def slow_model(monkeypatch, gate, seen):
+    async def call(**kwargs):
+        seen.append(kwargs)
+        await gate.wait()
+        return DRAFT
+    monkeypatch.setattr(step4, 'structured_call', call)
+
+
+async def test_a_slow_draft_is_kept_alive_with_spaces_then_json(jobs_dir, monkeypatch):
+    import asyncio
+    import json
+
+    import httpx
+
+    make_job()
+    gate, seen = asyncio.Event(), []
+    slow_model(monkeypatch, gate, seen)
+    monkeypatch.setenv('AGENT_HEARTBEAT_SECONDS', '0.05')
+
+    async def open_gate():
+        await asyncio.sleep(0.3)
+        gate.set()
+
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url='http://test') as http:
+        _, response = await asyncio.gather(open_gate(), http.post(f'{API}/studies/{JOB}/nodes/p0-node-1/generate'))
+
+    assert response.status_code == 200 and response.headers['content-type'] == 'application/json'
+    assert response.text.startswith(' ')  # the keep-alive
+    assert json.loads(response.text)['added'] == 2  # still plain JSON to any client
+
+
+async def test_a_second_request_for_the_node_waits_for_the_first_draft(jobs_dir, monkeypatch):
+    import asyncio
+
+    import httpx
+
+    make_job()
+    gate, seen = asyncio.Event(), []
+    slow_model(monkeypatch, gate, seen)
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url='http://test') as http:
+        url = f'{API}/studies/{JOB}/nodes/p0-node-1/generate'
+        first = asyncio.create_task(http.post(url))
+        while not seen:
+            await asyncio.sleep(0.01)
+        second = asyncio.create_task(http.post(url))
+        await asyncio.sleep(0.05)
+        gate.set()
+        a, b = (await first).json(), (await second).json()
+
+    assert len(seen) == 1  # one paid call
+    assert a == b and a['added'] == 2  # both get the same draft, added once
+
+
+async def test_a_draft_failure_comes_in_the_body(jobs_dir, monkeypatch):
+    import httpx
+
+    make_job()
+
+    async def broken(**kwargs):
+        raise RuntimeError('model overloaded')
+    monkeypatch.setattr(step4, 'structured_call', broken)
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url='http://test') as http:
+        response = await http.post(f'{API}/studies/{JOB}/nodes/p0-node-1/generate')
+
+    assert response.status_code == 200
+    assert response.json() == {'error': {'status': 502, 'detail': 'RuntimeError: model overloaded'}}
+
+
+async def test_the_draft_is_saved_even_if_the_client_goes_away(jobs_dir, monkeypatch):
+    import asyncio
+
+    from hazop_agent import worksheets
+
+    make_job()
+    gate, seen = asyncio.Event(), []
+    slow_model(monkeypatch, gate, seen)
+
+    response = await worksheets.generate_node_worksheet(JOB, 'p0-node-1')
+    body = response.body_iterator
+    task = worksheets._drafts[(JOB, 'p0-node-1')]
+    await body.aclose()  # the browser went away before the draft was ready
+    gate.set()
+    await task
+
+    assert len(client.get(f'{API}/studies/{JOB}/worksheet', params={'nodeId': 'p0-node-1'}).json()) == 2

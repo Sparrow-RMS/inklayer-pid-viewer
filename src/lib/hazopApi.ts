@@ -149,8 +149,15 @@ export interface GenerateResult {
  * adds it. Takes one model call, usually 1-3 minutes. `replace` deletes the
  * node's existing deviations first.
  */
-export function generateWorksheet(studyId: string, nodeId: string, replace = false): Promise<GenerateResult> {
-  return post(`/studies/${encodeURIComponent(studyId)}/nodes/${encodeURIComponent(nodeId)}/generate`, { replace })
+export async function generateWorksheet(studyId: string, nodeId: string, replace = false): Promise<GenerateResult> {
+  // The agent keeps this long request alive with spaces before the JSON, so by
+  // the time a draft fails the status is already 200: the error is in the body.
+  const result = await post<GenerateResult | { error: { status: number; detail: string } }>(
+    `/studies/${encodeURIComponent(studyId)}/nodes/${encodeURIComponent(nodeId)}/generate`,
+    { replace },
+  )
+  if ('error' in result) throw new Error(result.error.detail || `Drafting the worksheet failed (${result.error.status})`)
+  return result
 }
 
 // Each of these returns the whole deviation the item belongs to, refreshed.
