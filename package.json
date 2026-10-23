@@ -10,8 +10,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@fontsource/inter": "^5.3.0",
     "inklayer-react": "^1.2.3",
     "konva": "^9.3.22",
+    "material-symbols": "^0.48.1",
     "pdfjs-dist": "^4.3.136",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
