@@ -1,4 +1,5 @@
 import { useState, type FormEvent, type ReactNode } from 'react'
+import { Navigate, Outlet, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import PidViewer from './App'
 import './Portal.css'
 
@@ -147,8 +148,10 @@ function AddMemberDialog({ onClose, onAdd }: { onClose: () => void; onAdd: (name
 }
 
 function Dashboard({ userName, onSignOut }: { userName: string; onSignOut: () => void }) {
-  const [section, setSection] = useState<Section>('Team')
-  const [applicationOpened, setApplicationOpened] = useState(false)
+  const location = useLocation()
+  const navigate = useNavigate()
+  const section: Section = location.pathname === '/viewer' ? 'Application' : 'Team'
+  const [applicationOpened, setApplicationOpened] = useState(() => location.pathname === '/viewer')
   const [members, setMembers] = useState<Member[]>([])
   const [dialogOpen, setDialogOpen] = useState(false)
   const [openMenu, setOpenMenu] = useState<number | null>(null)
@@ -172,7 +175,7 @@ function Dashboard({ userName, onSignOut }: { userName: string; onSignOut: () =>
     setOpenMenu(null)
   }
   const handleSectionChange = (nextSection: Section) => {
-    setSection(nextSection)
+    navigate(nextSection === 'Team' ? '/team' : '/viewer')
     if (nextSection === 'Application') setApplicationOpened(true)
   }
 
@@ -237,6 +240,7 @@ function Dashboard({ userName, onSignOut }: { userName: string; onSignOut: () =>
     </main>
     {applicationOpened && <div className="application-workspace pdf-application" hidden={section !== 'Application'}><PidViewer embedded /></div>}
     {dialogOpen && section === 'Team' && <AddMemberDialog onClose={() => setDialogOpen(false)} onAdd={addMember} />}
+    <Outlet />
   </DashboardFrame>
 }
 
@@ -273,8 +277,24 @@ function DashboardFrame({ children, memberCount, userName, section, onSectionCha
 }
 
 export default function Portal() {
-  const [screen, setScreen] = useState<'login' | 'dashboard'>('login')
   const [userName, setUserName] = useState('')
-  if (screen === 'login') return <LoginScreen onSignIn={(name) => { setUserName(name); setScreen('dashboard') }} />
-  return <Dashboard userName={userName} onSignOut={() => setScreen('login')} />
+  const navigate = useNavigate()
+  const signIn = (name: string) => {
+    setUserName(name)
+    navigate('/team', { replace: true })
+  }
+  const signOut = () => {
+    setUserName('')
+    navigate('/login', { replace: true })
+  }
+
+  return <Routes>
+    <Route path="/login" element={userName ? <Navigate to="/team" replace /> : <LoginScreen onSignIn={signIn} />} />
+    <Route element={userName ? <Dashboard userName={userName} onSignOut={signOut} /> : <Navigate to="/login" replace />}>
+      <Route index element={<Navigate to="/team" replace />} />
+      <Route path="team" element={null} />
+      <Route path="viewer" element={null} />
+    </Route>
+    <Route path="*" element={<Navigate to={userName ? '/team' : '/login'} replace />} />
+  </Routes>
 }

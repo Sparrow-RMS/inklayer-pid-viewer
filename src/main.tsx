@@ -9,10 +9,13 @@ import '@fontsource/inter/600.css'
 import '@fontsource/inter/700.css'
 import 'material-symbols/outlined.css'
 import './index.css'
+import { BrowserRouter } from 'react-router-dom'
 import Portal from './Portal.tsx'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <Portal />
+    <BrowserRouter>
+      <Portal />
+    </BrowserRouter>
   </StrictMode>,
 )
