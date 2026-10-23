@@ -14,6 +14,9 @@ takes minutes shows progress as it goes:
     {"type": "result", "jobId": ..., "document": <step3 or step3-consolidated>, ...}
     {"type": "error", "message": ...}
 
+While a step is quiet, an empty line is sent every 15 seconds (streaming.py)
+so proxies don't close the connection as idle; skip empty lines.
+
 `document` has the same shape as the step3.json / step3-consolidated.json the
 viewer's file loader reads. Runs go through the same content-addressed job
 directory as the CLI, so uploading a drawing again reuses its cached steps.
@@ -51,6 +54,7 @@ from .graph.builder import graph
 from .pipeline import edits, jobs, llm
 from .plant3d import router as plant3d_router
 from .plant_scene import router as plant_scene_router
+from .streaming import with_heartbeat
 from .study_package import router as study_package_router
 from .worksheets import router as worksheets_router
 
@@ -92,7 +96,7 @@ async def run(request: Request, fileName: str = Query('document.pdf'), maxNodes:
     name = Path(fileName).name or 'document.pdf'
     if not name.lower().endswith('.pdf'):
         name += '.pdf'
-    return StreamingResponse(_stream(data, name, maxNodes), media_type='application/x-ndjson')
+    return StreamingResponse(with_heartbeat(_stream(data, name, maxNodes)), media_type='application/x-ndjson')
 
 
 def _line(event):
@@ -178,7 +182,7 @@ async def chat(body: dict):
         except Exception as err:  # noqa: BLE001 — reported to the viewer instead of a dropped stream
             yield _line({'type': 'error', 'message': f'{type(err).__name__}: {err}'})
 
-    return StreamingResponse(stream(), media_type='application/x-ndjson')
+    return StreamingResponse(with_heartbeat(stream()), media_type='application/x-ndjson')
 
 
 @app.get('/agent/chat/{thread_id}')
