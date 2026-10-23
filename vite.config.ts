@@ -11,6 +11,18 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
+    build: {
+      rolldownOptions: {
+        output: {
+          // PDF.js ships its worker as .mjs, and some servers (nginx with an
+          // older mime.types) send .mjs as application/octet-stream; with
+          // nosniff the browser then refuses to run the worker and no PDF
+          // opens. Named .js, it is served as JavaScript everywhere.
+          assetFileNames: (asset) =>
+            asset.names.some((name) => name.endsWith('.mjs')) ? 'assets/[name]-[hash].js' : 'assets/[name]-[hash][extname]',
+        },
+      },
+    },
     server: {
       allowedHosts: ['rewrite-semicolon-playmate.ngrok-free.dev'],
       proxy: {
