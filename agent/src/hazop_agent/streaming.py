@@ -12,6 +12,14 @@ from contextlib import suppress
 
 HEARTBEAT = '\n'
 
+# Headers for every long response. A proxy that buffers or compresses holds the
+# tiny keep-alives back (nginx gzip collects them until the response ends), so
+# the load balancer behind it still sees silence and answers 504.
+# X-Accel-Buffering: no makes nginx pass each chunk straight on, which also
+# makes its gzip flush per chunk; no-transform asks other proxies not to
+# recompress. no-cache: these are live answers.
+STREAM_HEADERS = {'X-Accel-Buffering': 'no', 'Cache-Control': 'no-cache, no-transform'}
+
 
 def heartbeat_seconds():
     # Well under the 60 s idle limit common to load balancers and proxies.

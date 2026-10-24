@@ -83,3 +83,22 @@ def test_the_run_endpoint_keeps_a_quiet_step_alive(jobs_dir, monkeypatch):
     assert '' in lines[1:-2]  # keep-alive lines while the step was quiet
     events = [json.loads(line) for line in lines if line]
     assert events[0]['type'] == 'run' and events[-1]['type'] == 'result'
+
+
+def test_long_responses_tell_proxies_not_to_buffer_or_compress(jobs_dir, monkeypatch):
+    from fastapi.testclient import TestClient
+
+    from hazop_agent.server import app
+
+    from .test_step4_worksheet import JOB, fake_model, make_job
+
+    make_job()
+    fake_model(monkeypatch)
+    client = TestClient(app)
+    responses = [
+        client.post(f'/agent/hazop/studies/{JOB}/nodes/p0-node-1/generate'),
+        client.post('/agent/chat', json={'threadId': JOB, 'message': 'hi'}),
+    ]
+    for response in responses:
+        assert response.headers['x-accel-buffering'] == 'no'
+        assert 'no-transform' in response.headers['cache-control']

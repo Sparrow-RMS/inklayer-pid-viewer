@@ -157,3 +157,12 @@ async def test_a_schema_too_large_to_compile_goes_unconstrained_and_is_validated
 def test_echo_drops_declined_thinking_before_a_fallback():
     content = [NS(type='thinking'), NS(type='text'), NS(type='fallback'), NS(type='thinking'), NS(type='text')]
     assert [b.type for b in llm._echo(content)] == ['text', 'fallback', 'thinking', 'text']
+
+
+@pytest.mark.parametrize('raw, expected', [(None, 64000), ('128000', 128000), ('1280004', 128000), ('abc', 64000), ('10', 1024)])
+def test_max_tokens_is_capped_at_what_claude_accepts(monkeypatch, raw, expected):
+    if raw is None:
+        monkeypatch.delenv('ANTHROPIC_PIPELINE_MAX_TOKENS', raising=False)
+    else:
+        monkeypatch.setenv('ANTHROPIC_PIPELINE_MAX_TOKENS', raw)
+    assert llm.anthropic_max_tokens() == expected

@@ -17,6 +17,7 @@ the graph node that made it. Tracing is off unless LANGSMITH_TRACING=true.
 """
 import asyncio
 import json
+import logging
 import os
 
 import jsonschema
@@ -103,6 +104,27 @@ SCHEMA_INSTRUCTIONS = (
 )
 
 
+# The most output tokens a current Claude model accepts (Opus 5.5, Sonnet 5.5: 128K).
+CLAUDE_MAX_OUTPUT_TOKENS = 128000
+log = logging.getLogger(__name__)
+
+
+def anthropic_max_tokens():
+    """ANTHROPIC_PIPELINE_MAX_TOKENS (default 64000), capped at what Claude accepts:
+    a mistyped value would otherwise fail every call with a 400."""
+    raw = os.environ.get('ANTHROPIC_PIPELINE_MAX_TOKENS') or '64000'
+    try:
+        value = int(raw)
+    except ValueError:
+        log.warning('ANTHROPIC_PIPELINE_MAX_TOKENS=%r is not a number; using 64000', raw)
+        return 64000
+    if value > CLAUDE_MAX_OUTPUT_TOKENS:
+        log.warning('ANTHROPIC_PIPELINE_MAX_TOKENS=%d is above the %d Claude allows; using %d',
+                    value, CLAUDE_MAX_OUTPUT_TOKENS, CLAUDE_MAX_OUTPUT_TOKENS)
+        return CLAUDE_MAX_OUTPUT_TOKENS
+    return max(1024, value)
+
+
 async def _anthropic_message(*, system, messages, model, schema=None):
     # Streamed: a whole-sheet extraction can run long, and a non-streaming call
     # with this max_tokens would trip the SDK's timeout guard.
@@ -111,7 +133,7 @@ async def _anthropic_message(*, system, messages, model, schema=None):
         output_config['format'] = {'type': 'json_schema', 'schema': schema}
     async with get_anthropic_client().beta.messages.stream(
         model=model,
-        max_tokens=int(os.environ.get('ANTHROPIC_PIPELINE_MAX_TOKENS') or 64000),
+        max_tokens=anthropic_max_tokens(),
         system=system,
         messages=messages,
         output_config=output_config,

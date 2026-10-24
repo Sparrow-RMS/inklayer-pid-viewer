@@ -37,7 +37,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from .pipeline import jobs
-from .streaming import json_when_done
+from .streaming import STREAM_HEADERS, json_when_done
 
 RecommendationStatus = Literal['open', 'in progress', 'closed']
 
@@ -354,7 +354,7 @@ async def generate_node_worksheet(study_id: str, node_id: str, body: GenerateIn 
     if task is None:
         task = _drafts[key] = asyncio.create_task(_draft_and_save(study_id, node_id, replace))
         task.add_done_callback(lambda t: _drafts.pop(key, None) if _drafts.get(key) is t else None)
-    return StreamingResponse(json_when_done(task), media_type='application/json')
+    return StreamingResponse(json_when_done(task), media_type='application/json', headers=STREAM_HEADERS)
 
 
 async def _draft_and_save(study_id, node_id, replace):

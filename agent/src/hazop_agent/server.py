@@ -54,7 +54,7 @@ from .graph.builder import graph
 from .pipeline import edits, jobs, llm
 from .plant3d import router as plant3d_router
 from .plant_scene import router as plant_scene_router
-from .streaming import with_heartbeat
+from .streaming import STREAM_HEADERS, with_heartbeat
 from .study_package import router as study_package_router
 from .worksheets import router as worksheets_router
 
@@ -96,7 +96,7 @@ async def run(request: Request, fileName: str = Query('document.pdf'), maxNodes:
     name = Path(fileName).name or 'document.pdf'
     if not name.lower().endswith('.pdf'):
         name += '.pdf'
-    return StreamingResponse(with_heartbeat(_stream(data, name, maxNodes)), media_type='application/x-ndjson')
+    return StreamingResponse(with_heartbeat(_stream(data, name, maxNodes)), media_type='application/x-ndjson', headers=STREAM_HEADERS)
 
 
 def _line(event):
@@ -182,7 +182,7 @@ async def chat(body: dict):
         except Exception as err:  # noqa: BLE001 — reported to the viewer instead of a dropped stream
             yield _line({'type': 'error', 'message': f'{type(err).__name__}: {err}'})
 
-    return StreamingResponse(with_heartbeat(stream()), media_type='application/x-ndjson')
+    return StreamingResponse(with_heartbeat(stream()), media_type='application/x-ndjson', headers=STREAM_HEADERS)
 
 
 @app.get('/agent/chat/{thread_id}')
