@@ -289,3 +289,40 @@ async def test_missing_input_fails_at_ingest(jobs_dir):
 def test_graph_shape():
     g = build_graph().get_graph()
     assert set(g.nodes) == {'__start__', 'ingest', 'extract', 'trace', 'classify', 'sheet_data', 'cluster', 'consolidate', '__end__'}
+
+
+async def test_a_step_that_failed_is_not_kept_and_the_next_run_recomputes_it(jobs_dir, monkeypatch):
+    # Every model call fails (a bad key, a mistyped max_tokens): the run stops.
+    broken = use_model(monkeypatch, FakeModel(fail=True))
+    first = await run({'pdf_path': str(FIXTURE_PDF)})
+    assert first['failure']
+    failed_step = next(s for s in ('step1', 'step2', 'sheet', 'step3') if first['step_status'].get(s) == 'computed'
+                       and first['failure'].startswith(s))
+    artifact = {'step1': 'step1', 'step2': 'step2', 'sheet': 'step1b-sheet', 'step3': 'step3'}[failed_step]
+    assert not jobs.has_artifact(first['job_id'], artifact)  # not kept
+    assert broken.calls
+
+    # The setting is fixed: the same drawing is computed again, not served the failure.
+    use_model(monkeypatch, FakeModel())
+    second = await run({'job_id': first['job_id']})
+    assert second.get('failure') is None
+    assert second['step_status'][failed_step] == 'computed'
+
+
+async def test_a_failed_result_already_kept_is_recomputed(jobs_dir, fake_model):
+    first = await run({'pdf_path': str(FIXTURE_PDF)})
+    job_id = first['job_id']
+    # What an older agent kept after a failed step 1: no entities, and its raw cache.
+    bad = jobs.read_artifact(job_id, 'step1')
+    for page in bad['pages']:
+        page['entities'] = []
+    bad['totals']['entities'] = 0
+    jobs.write_artifact(job_id, 'step1', bad)
+    jobs.artifact_path(job_id, 'step1-raw').unlink()
+    fake_model.calls.clear()
+
+    again = await run({'job_id': job_id})
+
+    assert again.get('failure') is None
+    assert again['step_status']['step1'] == 'computed'
+    assert 'pid_tile_inventory' in fake_model.calls

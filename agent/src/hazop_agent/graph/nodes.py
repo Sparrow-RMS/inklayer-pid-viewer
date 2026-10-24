@@ -73,33 +73,44 @@ async def _run_step(state: HazopState, *, step, artifact, compute, replay, summa
     have = jobs.has_artifact(job_id, artifact)
     previous = jobs.read_artifact(job_id, artifact) if have else None
 
+    # A result that fails the step's own check (step 1 with no entities, step 3
+    # with no nodes) is never kept, and one already kept is recomputed: a failed
+    # run (a bad key, a mistyped setting) would otherwise be reused forever.
+    def usable(doc):
+        return check(doc)[1] is None
+
+    result = None
     if not stale and raw_ok and (state.get('replay') or not have or can_replay is not None):
         started = time.monotonic()
-        result = replay(jobs.read_artifact(job_id, raw_artifact))
-        result['durationMs'] = round((time.monotonic() - started) * 1000)
-        changed = previous is None or _stable(previous) != _stable(result)
-        if changed:
-            jobs.write_artifact(job_id, artifact, result)
-        else:
-            result = previous
-        status = 'replayed'
-    elif not stale and have and (cache_valid is None or cache_valid(previous)):
+        replayed = replay(jobs.read_artifact(job_id, raw_artifact))
+        replayed['durationMs'] = round((time.monotonic() - started) * 1000)
+        if usable(replayed):
+            changed = previous is None or _stable(previous) != _stable(replayed)
+            if changed:
+                jobs.write_artifact(job_id, artifact, replayed)
+                result = replayed
+            else:
+                result = previous
+            status = 'replayed'
+    elif not stale and have and usable(previous) and (cache_valid is None or cache_valid(previous)):
         result, changed, status = previous, False, 'cached'
-    else:
+
+    if result is None:
         if not llm.has_api_key():
             return {'failure': f'{step} needs a model call but {llm.api_key_name()} is not set (agent/.env)'}
         started = time.monotonic()
         full = await compute()
         raw = full.pop('raw')
         full['durationMs'] = round((time.monotonic() - started) * 1000)
-        # Same raw-cache shape the JS CLI writes, so either implementation can replay it.
-        raw_doc = {'fileName': full['fileName'], 'pages': raw}
-        if 'pageCount' in full:
-            raw_doc = {'fileName': full['fileName'], 'pageCount': full['pageCount'], 'pages': raw}
-        jobs.write_artifact(job_id, raw_artifact, raw_doc)
-        jobs.write_artifact(job_id, artifact, full)
-        # model: which one produced this provider's results, for pipeline/compare.py.
-        jobs.ensure_job(job_id, lastStep=step if step != 'consolidate' else 'step3-consolidate', model=llm.model_name())
+        if usable(full):
+            # Same raw-cache shape the JS CLI writes, so either implementation can replay it.
+            raw_doc = {'fileName': full['fileName'], 'pages': raw}
+            if 'pageCount' in full:
+                raw_doc = {'fileName': full['fileName'], 'pageCount': full['pageCount'], 'pages': raw}
+            jobs.write_artifact(job_id, raw_artifact, raw_doc)
+            jobs.write_artifact(job_id, artifact, full)
+            # model: which one produced this provider's results, for pipeline/compare.py.
+            jobs.ensure_job(job_id, lastStep=step if step != 'consolidate' else 'step3-consolidate', model=llm.model_name())
         result, changed, status = full, True, 'computed'
 
     issues, failure = check(result)
