@@ -162,7 +162,7 @@ def compose_page(step1_page, network_page, forms):
             'w': box['width'],
             'h': box['height'],
             **form,
-            'sizedBy': 'claude' if e['id'] in forms else 'type',
+            'sizedBy': 'model' if e['id'] in forms else 'type',
         })
     spans = [{'id': s['id'], 'points': s['points'], 'lineNumbers': s.get('lineNumbers', [])}
              for s in (network_page or {}).get('spans', []) if len(s.get('points', [])) >= 2]

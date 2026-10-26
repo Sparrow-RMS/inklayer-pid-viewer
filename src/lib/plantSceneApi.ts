@@ -1,5 +1,5 @@
 // Client for the agent server's 3D nodes scene (agent/src/hazop_agent/plant_scene.py):
-// the pipeline's own entities and traced pipes, with Claude's sizing of the
+// the pipeline's own entities and traced pipes, with the model's sizing of the
 // equipment, keyed by the ids the HAZOP nodes list.
 
 import { agentFetch, agentUrl } from './agentClient'
@@ -27,8 +27,8 @@ export interface SceneItem {
   heightM: number
   /** Null: at pipe height. */
   elevationM: number | null
-  /** Who decided the 3D form: Claude, or a default from the type text. */
-  sizedBy: 'claude' | 'type'
+  /** Who decided the 3D form: the model, or a default from the type text. */
+  sizedBy: 'model' | 'type'
 }
 
 export interface SceneSpan {
@@ -50,13 +50,13 @@ export interface ScenePage {
 
 export interface PlantScene {
   jobId: string
-  /** Null until Claude has sized the equipment for the current step 1 run. */
+  /** Null until the equipment has been sized for the current step 1 run. */
   forms: { model: string; generatedAt: string } | null
   formsStale: boolean
   pages: ScenePage[]
 }
 
-export class SceneNotReadyError extends Error {}
+export class SceneNotReadyError extends Error { }
 
 async function read(response: Response): Promise<PlantScene> {
   if (response.ok) return response.json()
@@ -69,7 +69,7 @@ export async function getPlantScene(jobId: string): Promise<PlantScene> {
   return read(await agentFetch(`${PLANT_SCENE_URL}/${encodeURIComponent(jobId)}`))
 }
 
-/** Has Claude size the equipment (cached server-side), then returns the scene. */
+/** Has the model size the equipment (cached server-side), then returns the scene. */
 export async function sizePlantScene(jobId: string, force = false): Promise<PlantScene> {
   const params = force ? '?force=true' : ''
   return read(await agentFetch(`${PLANT_SCENE_URL}/${encodeURIComponent(jobId)}${params}`, { method: 'POST' }))

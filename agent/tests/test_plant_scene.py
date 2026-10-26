@@ -64,7 +64,7 @@ def test_claude_sizes_the_equipment_and_sets_the_scale(job, monkeypatch):
 
     assert '"capacity": "250 m3"' in seen['content'][1]['text']  # the data callout is joined by tag
     items = {i['id']: i for i in scene['pages'][0]['items']}
-    assert items['p0-eq-1']['heightM'] == 8 and items['p0-eq-1']['sizedBy'] == 'claude'
+    assert items['p0-eq-1']['heightM'] == 8 and items['p0-eq-1']['sizedBy'] == 'model'
     assert items['p0-vl-1']['sizedBy'] == 'type'
     # Median of real / drawn diameter: 7 / 0.05 and 0.7 / 0.05 -> 77, within the clamp.
     assert scene['pages'][0]['pageWidthM'] == pytest.approx(77)
@@ -119,4 +119,4 @@ async def test_two_sizing_requests_for_one_drawing_make_one_call(job, monkeypatc
 
     assert a.status_code == b.status_code == 200  # no 409: the second waited
     assert len(calls) == 1  # and took the first one's answer
-    assert b.json()['pages'][0]['items'][0]['sizedBy'] == 'claude'
+    assert b.json()['pages'][0]['items'][0]['sizedBy'] == 'model'

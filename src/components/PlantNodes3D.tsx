@@ -55,7 +55,7 @@ function groupNodes(nodes: ReviewedNode[], pageIndex: number): NodeGroup[] {
 
 // The pipeline's own entities and traced pipes in 3D, with each HAZOP node's
 // members in the node's colour (agent/src/hazop_agent/plant_scene.py). Separate
-// from the 3D view (Plant3DView), whose page Claude writes freely and which
+// from the 3D view (Plant3DView), whose page the model writes freely and which
 // therefore can't show nodes.
 export default function PlantNodes3D({ jobId, fileName, nodes, rightOffset, onClose }: PlantNodes3DProps) {
   const canvasRef = useRef<HTMLDivElement>(null)
@@ -72,8 +72,8 @@ export default function PlantNodes3D({ jobId, fileName, nodes, rightOffset, onCl
   const page = scene?.pages.find((p) => p.pageIndex === pageIndex) ?? scene?.pages[0] ?? null
   const groups = useMemo(() => groupNodes(nodes, page?.pageIndex ?? 0), [nodes, page?.pageIndex])
 
-  // Load the scene; if Claude hasn't sized the equipment yet, draw it with the
-  // defaults now and ask Claude in the background.
+  // Load the scene; if the equipment hasn't been sized yet, draw it with the
+  // defaults now and have Sparrow size it in the background.
   useEffect(() => {
     if (!jobId) return
     let cancelled = false
@@ -119,7 +119,7 @@ export default function PlantNodes3D({ jobId, fileName, nodes, rightOffset, onCl
     }
   }, [])
 
-  // A new page, or the same page re-sized by Claude (keep the camera then).
+  // A new page, or the same page re-sized (keep the camera then).
   const loadedPage = useRef<number | null>(null)
   useEffect(() => {
     if (!page || !viewRef.current) return
@@ -168,7 +168,7 @@ export default function PlantNodes3D({ jobId, fileName, nodes, rightOffset, onCl
             <h2>Nodes in 3D</h2>
             <span className="p3n-muted">
               {fileName} · the drawing's own items and traced pipes, laid out as on the sheet;{' '}
-              {scene?.forms ? `equipment sized by ${scene.forms.model}` : 'equipment sizes approximate'}
+              {scene?.forms ? 'equipment sized by Sparrow' : 'equipment sizes approximate'}
             </span>
           </div>
           {scene && scene.pages.length > 1 && (
@@ -183,7 +183,7 @@ export default function PlantNodes3D({ jobId, fileName, nodes, rightOffset, onCl
           <button
             className="p3n-button"
             disabled={!scene || sizing === 'running'}
-            onClick={() => window.confirm('Ask Claude to size the equipment again? This makes a new Claude call.') && void resize(true)}
+            onClick={() => window.confirm('Have Sparrow size the equipment again? This replaces the current sizes.') && void resize(true)}
           >
             Re-size equipment
           </button>
@@ -192,7 +192,7 @@ export default function PlantNodes3D({ jobId, fileName, nodes, rightOffset, onCl
           </button>
         </header>
 
-        {sizing === 'running' && <div className="p3n-banner">Claude is sizing the equipment… shapes and heights are approximate until it finishes.</div>}
+        {sizing === 'running' && <div className="p3n-banner">Sparrow is sizing the equipment… shapes and heights are approximate until it finishes.</div>}
         {sizing === 'failed' && (
           <div className="p3n-banner p3n-banner-error">
             Couldn't size the equipment ({sizingError}). Showing default sizes.{' '}
@@ -244,7 +244,7 @@ export default function PlantNodes3D({ jobId, fileName, nodes, rightOffset, onCl
                     <span className="p3n-muted">
                       {pickedItem.category}
                       {pickedItem.category === 'equipment' &&
-                        ` · ~${pickedItem.diameterM.toFixed(1)} m × ${pickedItem.heightM.toFixed(1)} m (${pickedItem.sizedBy === 'claude' ? 'sized by Claude' : 'default size'})`}
+                        ` · ~${pickedItem.diameterM.toFixed(1)} m × ${pickedItem.heightM.toFixed(1)} m (${pickedItem.sizedBy === 'model' ? 'sized by Sparrow' : 'default size'})`}
                     </span>
                   </>
                 ) : (

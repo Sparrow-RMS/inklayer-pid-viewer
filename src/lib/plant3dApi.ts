@@ -1,5 +1,5 @@
 // Client for the agent server's 3D plant view (agent/src/hazop_agent/plant3d.py):
-// uploads the open PDF, Claude writes a Three.js page of the plant, and the
+// uploads the open PDF, the model writes a Three.js page of the plant, and the
 // server keeps it beside the drawing's other results.
 
 import { agentError, agentFetch, agentUrl } from './agentClient'
@@ -9,7 +9,7 @@ const PLANT3D_URL = import.meta.env.VITE_PLANT3D_URL || agentUrl('/agent/plant3d
 export type Plant3dEvent =
   /** First event: cached = the page is already on disk and no model call is made. */
   | { type: 'start'; jobId: string; cached: boolean }
-  /** A piece of Claude's reasoning summary, in order. */
+  /** A piece of the model's reasoning summary, in order. */
   | { type: 'thinking'; text: string }
   /** Characters of the page written so far. */
   | { type: 'progress'; chars: number }

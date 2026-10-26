@@ -45,7 +45,7 @@ function Toolbar(props: {
   onOpenPackage: () => void
   onOpen3d: () => void
   onOpenNodes3d: () => void
-  /** True while Claude is still drawing the 3D view. */
+  /** True while Sparrow is still drawing the 3D view. */
   is3dBusy: boolean
   /** e.g. "3/7"; null until the package has loaded. */
   packageProgress: { provided: number; total: number } | null
@@ -97,7 +97,7 @@ function Toolbar(props: {
       >
         Study package{props.packageProgress ? ` (${props.packageProgress.provided}/${props.packageProgress.total})` : ''}
       </button>
-      {/* Claude draws the drawing as a 3D plant (agent/src/hazop_agent/plant3d.py). */}
+      {/* Sparrow draws the drawing as a 3D plant (agent/src/hazop_agent/plant3d.py). */}
       <button className="feature" onClick={props.onOpen3d} title="Show this P&ID as an interactive 3D model of the plant, drawn by Sparrow">
         <span aria-hidden="true" className="viewer-toolbar-icon">view_in_ar</span>
         {props.is3dBusy ? '3D view (building…)' : '3D view'}
