@@ -53,6 +53,7 @@ from . import chat as chat_agent
 from .graph.builder import graph
 from .pipeline import edits, jobs, llm
 from .plant3d import router as plant3d_router
+from .library import router as library_router
 from .plant_scene import router as plant_scene_router
 from .streaming import STREAM_HEADERS, with_heartbeat
 from .study_package import router as study_package_router
@@ -75,6 +76,7 @@ app.include_router(worksheets_router)
 app.include_router(study_package_router)
 app.include_router(plant3d_router)
 app.include_router(plant_scene_router)
+app.include_router(library_router)
 
 
 @app.get('/agent/health')

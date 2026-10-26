@@ -1,4 +1,6 @@
 import { useRef, useState, type DragEvent } from 'react'
+import type { SavedDrawing } from '../lib/libraryApi'
+import RecentDrawings from './RecentDrawings'
 import './UploadScreen.css'
 
 const STEPS = [
@@ -12,8 +14,17 @@ function Icon({ name }: { name: string }) {
   return <span aria-hidden="true" className="upload-symbol">{name}</span>
 }
 
-// Shown in place of the viewer until a PDF is opened.
-export default function UploadScreen({ onFile }: { onFile: (file: File) => void }) {
+export interface UploadScreenProps {
+  onFile: (file: File) => void
+  /** Reopens a drawing already analysed (RecentDrawings). */
+  onOpenSaved?: (drawing: SavedDrawing) => void
+  openingSaved?: string | null
+  openSavedError?: string | null
+}
+
+// Shown in place of the viewer until a PDF is opened: a new upload, or one of
+// the drawings already analysed.
+export default function UploadScreen({ onFile, onOpenSaved, openingSaved = null, openSavedError = null }: UploadScreenProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [dragging, setDragging] = useState(false)
 
@@ -54,6 +65,8 @@ export default function UploadScreen({ onFile }: { onFile: (file: File) => void 
             <Icon name="folder_open" />Choose PDF
           </button>
         </div>
+
+        {onOpenSaved && <RecentDrawings onOpen={onOpenSaved} opening={openingSaved} openError={openSavedError} />}
 
         <ol className="upload-steps">
           {STEPS.map((step, i) => (

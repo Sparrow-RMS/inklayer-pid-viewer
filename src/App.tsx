@@ -17,6 +17,7 @@ import { renderPdfPagesToImages } from './lib/renderPdfPages'
 import { nodeToAnnotation, hazopNodeToAnnotations, type Annotation, type PageDimensions } from './lib/annotationFromNode'
 import { pipelineNodesToProposedNodes, isPipelineNodeFile } from './lib/pipelineNodes'
 import { formatValidation, runPipeline } from './lib/runPipeline'
+import { openSavedDrawing, type SavedDrawing, type SavedNodes } from './lib/libraryApi'
 import { describeTool, getChatHistory, sendChat } from './lib/chatApi'
 
 // Local single-user identity for now. Once this viewer is wired up behind the
@@ -503,6 +504,45 @@ export default function App({ embedded = false }: { embedded?: boolean }) {
     [studyId, paintPipelineDocument, addAssistantText],
   )
 
+  // Reopening a drawing already analysed (the upload screen's list): its PDF
+  // goes through handleFile under its original name, so the job id, worksheets,
+  // study package and chat come back with it; its saved nodes are painted once
+  // the PDF is in (painting needs the loaded PDF's page sizes).
+  const [openingSaved, setOpeningSaved] = useState<string | null>(null)
+  const [openSavedError, setOpenSavedError] = useState<string | null>(null)
+  // A hand-off to the effect below, not something to render: a ref.
+  const savedToPaint = useRef<SavedNodes | null>(null)
+
+  const handleOpenSaved = useCallback(
+    async (drawing: SavedDrawing) => {
+      setOpeningSaved(drawing.jobId)
+      setOpenSavedError(null)
+      try {
+        const { pdf, nodes } = await openSavedDrawing(drawing.jobId)
+        savedToPaint.current = nodes
+        handleFile(new File([pdf], drawing.fileName, { type: 'application/pdf' }))
+        setChatCollapsed(false)
+      } catch (err) {
+        setOpenSavedError(err instanceof Error ? err.message : String(err))
+      } finally {
+        setOpeningSaved(null)
+      }
+    },
+    [handleFile],
+  )
+
+  useEffect(() => {
+    const saved = savedToPaint.current
+    if (!pdfData || !saved) return
+    savedToPaint.current = null
+    void paintPipelineDocument(saved.document, 'your saved run', true, false).then(() => {
+      // The full rule-check report was shown when the run finished; reopening gives the count.
+      const counts = saved.validation.reduce((sum, p) => ({ error: sum.error + (p.counts.error ?? 0), warning: sum.warning + (p.counts.warning ?? 0) }), { error: 0, warning: 0 })
+      const checks = saved.validation.length ? ` Node-rule checks: ${counts.error} error${counts.error === 1 ? '' : 's'}, ${counts.warning} warning${counts.warning === 1 ? '' : 's'}.` : ''
+      addAssistantText(`Reopened ${fileName} with the nodes from its last HAZOP run${saved.consolidated ? ' (reduced breakdown)' : ''}. Its worksheets and this chat are as you left them.${checks}`)
+    })
+  }, [pdfData, paintPipelineDocument, addAssistantText, fileName])
+
   // Sends the open PDF to the LangGraph agent and runs every step in one
   // request. A single chat message is updated in place with the latest
   // progress line, then the result is painted like a loaded file.
@@ -677,7 +717,8 @@ export default function App({ embedded = false }: { embedded?: boolean }) {
   // Every node on the cards, for the 3D nodes window.
   const allNodes = useMemo(() => messages.flatMap((m) => (m.kind === 'nodes' ? m.nodes : [])), [messages])
 
-  if (!pdfData) return <UploadScreen onFile={handleFile} />
+  if (!pdfData)
+    return <UploadScreen onFile={handleFile} onOpenSaved={handleOpenSaved} openingSaved={openingSaved} openSavedError={openSavedError} />
 
   return (
     <>
